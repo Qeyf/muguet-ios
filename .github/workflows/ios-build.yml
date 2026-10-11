@@ -71,6 +71,11 @@ jobs:
           MUGUET_DEVICE_UDID: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mode == 'developer-archive' && inputs.export_method != 'app-store-connect' && secrets.MUGUET_DEVICE_UDID || '' }}
         run: ./scripts/build-ios-ci.sh
 
+      - name: Verify iOS 27 simulator launcher lifecycle
+        if: env.MUGUET_GAME_SOURCE == 'none'
+        shell: bash
+        run: ./scripts/test-ios-simulator.sh
+
       - name: Retain build evidence on success or failure
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -93,3 +98,56 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+  release:
+    name: Publish a verified launcher version
+    needs: ios
+    # No PR, signing-secret run or commercial game input can publish a release.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUNDLE_ID: ${{ vars.MUGUET_BUNDLE_ID || 'com.qeyf.muguet' }}
+    steps:
+      - name: Checkout exact built source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download the same run's verified launcher
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: Muguet-Launcher-sideload
+          path: release-input/package
+
+      - name: Download the same run's native test evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: iOS-build-evidence-${{ github.run_id }}
+          path: release-input/evidence
+
+      - name: Prepare versioned files and measured test report
+        run: python3 scripts/prepare-ios-release.py release-input/package release-input/evidence release-output
+
+      - name: Publish once through official GitHub CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="$(cat release-output/tag.txt)"
+          if gh release view "$TAG" --json isDraft,url > existing-release.json 2> existing-release-error.txt; then
+            python3 - <<'PY'
+          import json, sys
+          release = json.load(open('existing-release.json'))
+          if release['isDraft']:
+              sys.exit('An existing draft needs inspection; no release assets were overwritten')
+          print('Published version already exists; retained unchanged: ' + release['url'])
+          PY
+            exit 0
+          fi
+          gh --version
+          gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "Muguet $TAG — iOS 27 launcher" --notes-file release-output/TEST_REPORT.md \
+            release-output/*.ipa release-output/*.zip release-output/TEST_REPORT.md release-output/SHA256SUMS

@@ -110,10 +110,19 @@ if ! command -v xcodegen >/dev/null || [ "$(xcodegen --version)" != "Version: $X
   curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location --silent --show-error \
     "https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip" -o "$PRIVATE_DIR/xcodegen.zip"
   [ "$(shasum -a 256 "$PRIVATE_DIR/xcodegen.zip" | awk '{print $1}')" = "$XCODEGEN_SHA256" ] || fail 'XcodeGen release checksum mismatch'
-  unzip -q "$PRIVATE_DIR/xcodegen.zip" -d "$PRIVATE_DIR/tools"
-  export PATH="$PRIVATE_DIR/tools/xcodegen/bin:$PATH"
+  XCODEGEN_TOOL_DIR="$PRIVATE_DIR/tools"
+  if [ -n "${GITHUB_PATH:-}" ]; then
+    [ -d "${RUNNER_TEMP:-}" ] || fail 'GitHub tool handoff requires RUNNER_TEMP'
+    # This verified public tool must outlive private signing/input cleanup.
+    XCODEGEN_TOOL_DIR="$(mktemp -d "$RUNNER_TEMP/muguet-xcodegen.XXXXXX")"
+  fi
+  unzip -q "$PRIVATE_DIR/xcodegen.zip" -d "$XCODEGEN_TOOL_DIR"
+  export PATH="$XCODEGEN_TOOL_DIR/xcodegen/bin:$PATH"
 fi
 [ "$(xcodegen --version)" = "Version: $XCODEGEN_VERSION" ] || fail 'XcodeGen version mismatch'
+if [ -n "${GITHUB_PATH:-}" ]; then
+  printf '%s\n' "$(dirname "$(command -v xcodegen)")" >> "$GITHUB_PATH"
+fi
 rustup toolchain install "$TOOLCHAIN" --profile minimal --no-self-update
 rustup target add --toolchain "$TOOLCHAIN" aarch64-apple-ios
 
@@ -349,6 +358,29 @@ verify_app() {
   [ "$(awk '$1 == "sdk" {print $2}' "$LOG_DIR/$label-macho-build.txt")" = "$SDK_VERSION" ] || fail 'Mach-O SDK does not match the selected iOS SDK'
   [ "$(awk '$1 == "minos" {print $2}' "$LOG_DIR/$label-macho-build.txt")" = 15.0 ] || fail 'Mach-O minimum iOS version differs from the deployment target'
   xcrun otool -L "$app/muguet" > "$LOG_DIR/$label-linked-libraries.txt"
+  # Inspect the actual package, including the native scene association code.
+  # UI launch tests separately prove that these declarations are used at runtime.
+  python3 - "$app" "$LOG_DIR/$label-scene-lifecycle.json" <<'PY'
+import json, plistlib, sys
+from pathlib import Path
+app = Path(sys.argv[1])
+info = plistlib.loads((app / "Info.plist").read_bytes())
+manifest = info.get("UIApplicationSceneManifest", {})
+configs = manifest.get("UISceneConfigurations", {}).get("UIWindowSceneSessionRoleApplication", [])
+if (manifest.get("UIApplicationSupportsMultipleScenes") is not False or
+        len(configs) != 1 or not configs[0].get("UISceneConfigurationName") or
+        configs[0].get("UISceneClassName") != "UIWindowScene"):
+    sys.exit("application package lacks a valid single UIWindowScene configuration")
+binary = (app / "muguet").read_bytes()
+required = [b"UIWindowScene\0", b"connectedScenes\0", b"setWindowScene:\0"]
+if not all(selector in binary for selector in required):
+    sys.exit("application binary lacks UIKit window scene association")
+Path(sys.argv[2]).write_text(json.dumps({
+    "scene_class": "UIWindowScene", "multiple_scenes": False,
+    "native_scene_association_selectors": "present",
+    "runtime_launch": "requires separate native UI test",
+}, indent=2) + "\n")
+PY
 }
 verify_app "$APP" app
 if [ "$MODE" = developer-archive ]; then

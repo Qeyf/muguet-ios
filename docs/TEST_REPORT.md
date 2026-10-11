@@ -2,6 +2,8 @@
 
 Date: 2026-10-11. Upstream main: `3c4ea719ac56049f92681f854783360133b55156`. Device target is user-reported iPhone 17 Pro Max, arm64, iOS 27.2 developer beta 3; the physical device and installed OS were not accessed.
 
+**Subsequent physical crash evidence:** the user re-signed the first launcher IPA through LCSign and supplied an iPhone18,2 / iOS 27.2 `24B5099f` crash log. It records an immediate UIKit scene-lifecycle assertion. The executable UUID matches the delivered package exactly. This establishes a failed first launch for that package on the reported device, not successful installation/gameplay testing by this environment. The correction and required native launch verification are recorded in [IOS27_SCENE_FIX.md](IOS27_SCENE_FIX.md); corrected physical-device launch is pending retest.
+
 ## Current evidence
 
 | Check | Result / limit |
@@ -15,7 +17,7 @@ Date: 2026-10-11. Upstream main: `3c4ea719ac56049f92681f854783360133b55156`. Dev
 | Shell/diff checks | Bash syntax and `git diff --check` passed locally |
 | Local native build | Real command attempted, rejected: `iOS builds require macOS with Xcode installed` |
 | GitHub fork | `Qeyf/muguet-ios` created; separate work branch; upstream baseline preserved as `upstream-main`, verified CI integrated into default main |
-| Apple Silicon native build | Passed [run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526); Rust arm64 static library, Swift launcher, native link and Xcode build succeeded |
+| Apple Silicon native build | Passed [run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526); Rust arm64 executable, linked SwiftUI helper and Xcode packaging succeeded; no launch test was performed in that run |
 | Native macOS AOT compiler tool | Passed actual run 38151257119; arm64 MACOS, SDK 27.2, strict codesign, compiled/package hashes and ZIP CRC verified. No real game WASM was executed |
 | Launcher IPA | Produced and downloaded `Muguet-Launcher-sideload.ipa`, 9,448,192 bytes; ZIP CRC and SHA-256 match CI evidence |
 | Launcher signature/platform | Actual macOS strict codesign passed; ad-hoc self-signature, no TeamIdentifier or provisioning profile; arm64, IOS, minimum 15.0, SDK 27.2 |
@@ -23,7 +25,8 @@ Date: 2026-10-11. Upstream main: `3c4ea719ac56049f92681f854783360133b55156`. Dev
 | AOT game compilation | Not run; no lawful real game WASM available |
 | Developer signing/profile | Not configured or verified; Apple portal sign-in and device UDID are outstanding |
 | Installable developer IPA | Not produced |
-| Device/gameplay/FPS/RAM/thermal testing | Not run |
+| Device launch | User-provided crash log proves first launcher failed at UIKit's no-scene-lifecycle assertion; corrected device retest pending |
+| Gameplay/FPS/RAM/thermal testing | Not run |
 
 A review follow-up found regular metadata files such as `b/.DS_Store` were incorrectly counted as build directories. Two positive ZIP/folder fixtures reproduced the error, then passed after matching the production importer policy. Disk-capacity diagnostics and download reserve enforcement were also added after review.
 

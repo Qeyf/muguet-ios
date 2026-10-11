@@ -13,6 +13,7 @@ Verified source baseline: upstream `3c4ea719ac56049f92681f854783360133b55156` on
 | XcodeGen | 2.46.0, official release SHA-256 checked by CI |
 | Wasmtime | 49.0.2 in Cargo.lock; host compiler and device runtime share this lock |
 | wgpu | 30.0.1; upstream vendored wgpu-core patch is retained |
+| winit | 0.30.13 API; scene backport source pinned to `94d6a23c425023810a0879aa7a03abb2e4f1decc` (open contributor change, not a released fix) |
 
 The phone's iOS 27.2 beta 3 does not imply an Xcode 27.2 beta 3 exists. Apple and GitHub's checked inventory list beta 2. The workflow explicitly checks SDK and Xcode build before compilation; update a changed pin only after checking the official inventory.
 
@@ -37,6 +38,14 @@ git diff --check
 ```
 
 The Rust harness compiles the exact production importer, not a separate imitation. Python command-recorder tests check build arguments and signing policy; their synthetic package is never a deliverable or proof of native compilation.
+
+The original launcher failed on the user's iOS 27.2 device because it lacked scene adoption. [IOS27_SCENE_FIX.md](IOS27_SCENE_FIX.md) records the crash/binary match and contributor-source audit. The package now declares one UIWindowScene and the pinned API-compatible backend attaches its window through public UIKit scene APIs. The existing `dpi` registry version is retained rather than taking the Git workspace's older version. Native simulator UI checks are a separate required launcher CI step; package metadata/symbol checks and a successful compile alone cannot establish launch.
+
+## Versioned GitHub Releases
+
+After a successful push build on `main`, a separate job downloads that same run's launcher and native test evidence. Its scoped `contents: write` permission is used only by the official GitHub CLI. PRs, manual developer-signing jobs and game builds do not publish releases. The preparation gate checks source revision, native UI success, IPA checksum and absence of a provisioning profile; versioned files are published as a prerelease at the exact built commit.
+
+Each release includes a sideload IPA requiring eligible local re-signing, the separate Mac compiler, native evidence ZIP, TEST_REPORT.md and SHA256SUMS. An existing published version is preserved; an existing draft stops the job for inspection. To publish another version, increase `CFBundleShortVersionString` and `CFBundleVersion` in `ios/Info.plist` before merging verified changes. Physical tests remain pending until the actual device is retested. The [GitHub CLI release documentation](https://cli.github.com/manual/gh_release_create) describes the publication/tagging API used here.
 
 ## Build modes
 

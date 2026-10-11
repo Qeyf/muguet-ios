@@ -22,7 +22,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 
 RECORDER = r'''#!/usr/bin/env python3
-import json, os, pathlib, sys, zipfile
+import json, os, pathlib, plistlib, sys, zipfile
 name = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
 with open(os.environ["BUILD_COMMAND_LOG"], "a") as out:
@@ -62,7 +62,23 @@ elif name == "rustc":
         print("host: aarch64-apple-darwin")
 elif name == "xcodegen":
     if "--version" in args:
-        print("Version: 2.46.0")
+        version = os.environ.get("BUILD_INSTALLED_XCODEGEN_VERSION", "2.46.0") if pathlib.Path(__file__).parent.name == "tools" else "2.46.0"
+        print("Version: " + version)
+elif name == "curl":
+    # Synthetic public-release ZIP, not the downloaded upstream binary.
+    with zipfile.ZipFile(value("-o"), "w") as archive:
+        executable = zipfile.ZipInfo("xcodegen/bin/xcodegen")
+        executable.create_system = 3
+        executable.external_attr = 0o100755 << 16
+        archive.writestr(executable, pathlib.Path(__file__).read_text())
+        archive.writestr("xcodegen/share/xcodegen/SettingPresets/fixture.yml", "synthetic fixture")
+elif name == "shasum":
+    if pathlib.Path(args[-1]).name == "xcodegen.zip":
+        # Explicit checksum boundary fixture; this does not validate release bytes.
+        digest = "0" * 64 if os.environ.get("BUILD_XCODEGEN_BAD_CHECKSUM") == "1" else "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+        print(digest + "  " + args[-1])
+    else:
+        os.execv(os.environ["BUILD_REAL_SHASUM"], [os.environ["BUILD_REAL_SHASUM"], *args])
 elif name == "xcodebuild":
     if "-version" in args:
         print("Xcode 27.2\nBuild version 27B5028f")
@@ -77,8 +93,12 @@ elif name == "xcodebuild":
         else:
             app = pathlib.Path(value("-derivedDataPath")) / "Build/Products/Release-iphoneos/Muguet.app"
         app.mkdir(parents=True, exist_ok=True)
-        (app / "muguet").write_bytes(b"recorder binary")
-        (app / "Info.plist").write_text("recorder plist")
+        selectors = b"" if os.environ.get("BUILD_MISSING_SCENE_BACKEND") == "1" else b"\0UIWindowScene\0connectedScenes\0setWindowScene:\0"
+        (app / "muguet").write_bytes(b"recorder binary" + selectors)
+        info = plistlib.loads(pathlib.Path("ios/Info.plist").read_bytes())
+        if os.environ.get("BUILD_MISSING_SCENE_MANIFEST") == "1":
+            info.pop("UIApplicationSceneManifest", None)
+        (app / "Info.plist").write_bytes(plistlib.dumps(info))
         if "archive" in args:
             (app / "embedded.mobileprovision").write_bytes(b"recorder profile")
 elif name == "xcrun":
@@ -145,7 +165,7 @@ class IOSBuildContract(unittest.TestCase):
         self.env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ["PATH"],
                         HOME=str(self.root / "home"), BUILD_COMMAND_LOG=str(self.log))
         for key in tuple(self.env):
-            if key.startswith("MUGUET_") or key in ("TEAM", "FREE", "BUNDLE_ID"):
+            if key.startswith("MUGUET_") or key in ("TEAM", "FREE", "BUNDLE_ID", "GITHUB_PATH"):
                 self.env.pop(key)
 
     def tearDown(self):
@@ -301,6 +321,59 @@ class IOSBuildContract(unittest.TestCase):
         rustup = [c for c in self.commands() if c["command"] == "rustup"]
         self.assertIn("1.98.1", rustup[0]["args"])
         self.assertIn("aarch64-apple-ios", rustup[1]["args"])
+
+    def xcodegen_download_env(self):
+        developer = self.root / "Xcode/Contents/Developer"
+        developer.mkdir(parents=True)
+        real_shasum = shutil.which("shasum")
+        self.assertIsNotNone(real_shasum)
+        for name in ("curl", "shasum"):
+            tool = self.root / "tools" / name
+            tool.write_text(RECORDER)
+            tool.chmod(0o755)
+        github_path = self.root / "github-path.txt"
+        github_path.write_text("")
+        return dict(DEVELOPER_DIR=str(developer), RUNNER_TEMP=str(self.root), GITHUB_PATH=str(github_path),
+                    BUILD_INSTALLED_XCODEGEN_VERSION="2.45.0", BUILD_REAL_SHASUM=real_shasum), github_path
+
+    def test_ci_verified_xcodegen_survives_cleanup_for_the_next_workflow_process(self):
+        env, github_path = self.xcodegen_download_env()
+        result = self.run_build(ci=True, env=env)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        directories = github_path.read_text().splitlines()
+        self.assertEqual(len(directories), 1, "The verified executable directory must be handed to the next step")
+        self.assertTrue((Path(directories[0]) / "xcodegen").is_file())
+        self.assertFalse(any(self.root.glob("muguet-ios.*")), "Private build inputs must still be cleaned up")
+        next_step_env = dict(self.env, **env)
+        next_step_env["PATH"] = os.pathsep.join([*directories, self.env["PATH"]])
+        next_step = subprocess.run(["xcodegen", "--version"], env=next_step_env, text=True,
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertEqual(next_step.returncode, 0, next_step.stdout)
+        self.assertEqual(next_step.stdout.strip(), "Version: 2.46.0")
+
+    def test_ci_xcodegen_checksum_failure_cannot_publish_a_tool_directory(self):
+        env, github_path = self.xcodegen_download_env()
+        result = self.run_build(ci=True, env=dict(env, BUILD_XCODEGEN_BAD_CHECKSUM="1"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("XcodeGen release checksum mismatch", result.stdout)
+        self.assertEqual(github_path.read_text(), "")
+        self.assertFalse(any(c["command"] == "cargo" for c in self.commands()))
+
+    def test_ci_rejects_package_without_scene_configuration(self):
+        developer = self.root / "Xcode/Contents/Developer"
+        developer.mkdir(parents=True)
+        result = self.run_build(ci=True, env={"DEVELOPER_DIR": str(developer), "RUNNER_TEMP": str(self.root),
+                                              "BUILD_MISSING_SCENE_MANIFEST": "1"})
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("application package lacks a valid single UIWindowScene configuration", result.stdout)
+
+    def test_ci_rejects_native_binary_without_scene_window_association(self):
+        developer = self.root / "Xcode/Contents/Developer"
+        developer.mkdir(parents=True)
+        result = self.run_build(ci=True, env={"DEVELOPER_DIR": str(developer), "RUNNER_TEMP": str(self.root),
+                                              "BUILD_MISSING_SCENE_BACKEND": "1"})
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("application binary lacks UIKit window scene association", result.stdout)
 
     def test_project_vtool_uses_the_selected_sdk_version(self):
         text = (ROOT / "ios/project.yml").read_text()

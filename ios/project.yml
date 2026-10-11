@@ -5,7 +5,37 @@ name: Muguet
 options:
   deploymentTarget:
     iOS: "15.0"
+settings:
+  base:
+    MUGUET_APP_BUNDLE_ID: ch.cclerc.muguet.ios
+schemes:
+  Muguet:
+    build:
+      targets:
+        Muguet: all
+  MuguetUITests:
+    build:
+      targets:
+        Muguet: [test]
+        MuguetUITests: [test]
+    test:
+      config: Release
+      targets:
+        - MuguetUITests
 targets:
+  MuguetUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: LauncherUITests.swift
+    dependencies:
+      - target: Muguet
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(MUGUET_APP_BUNDLE_ID).uitests
+        TEST_TARGET_NAME: Muguet
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
   Muguet:
     type: application
     platform: iOS
@@ -14,7 +44,7 @@ targets:
       - path: ../assets/muguet.icon
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: ch.cclerc.muguet.ios
+        PRODUCT_BUNDLE_IDENTIFIER: $(MUGUET_APP_BUNDLE_ID)
         PRODUCT_NAME: Muguet
         EXECUTABLE_NAME: muguet
         CODE_SIGN_STYLE: Automatic
@@ -31,6 +61,19 @@ targets:
         basedOnDependencyAnalysis: false
         script: |
           set -eu
-          SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
-          xcrun vtool -set-build-version ios "$IPHONEOS_DEPLOYMENT_TARGET" "$SDK_VERSION" -replace -output "$TARGET_BUILD_DIR/$EXECUTABLE_PATH" \
-            "$SRCROOT/../target/ios/aarch64-apple-ios/release/muguet"
+          case "${PLATFORM_NAME:-iphoneos}" in
+            iphoneos)
+              SDK_NAME=iphoneos
+              BUILD_PLATFORM=ios
+              RUST_BINARY="$SRCROOT/../target/ios/aarch64-apple-ios/release/muguet"
+              ;;
+            iphonesimulator)
+              SDK_NAME=iphonesimulator
+              # Apple's vtool spelling for PLATFORM_IOSSIMULATOR is iossim.
+              BUILD_PLATFORM=iossim
+              RUST_BINARY="$SRCROOT/../target/ios-simulator/aarch64-apple-ios-sim/release/muguet"
+              ;;
+            *) printf 'Unsupported application platform: %s\n' "$PLATFORM_NAME" >&2; exit 1 ;;
+          esac
+          SDK_VERSION="$(xcrun --sdk "$SDK_NAME" --show-sdk-version)"
+          xcrun vtool -set-build-version "$BUILD_PLATFORM" "$IPHONEOS_DEPLOYMENT_TARGET" "$SDK_VERSION" -replace -output "$TARGET_BUILD_DIR/$EXECUTABLE_PATH" "$RUST_BINARY"

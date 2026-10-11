@@ -22,7 +22,9 @@ Updated 2026-10-11; each status describes evidence rather than intended behavior
 
 ## In progress
 
-- Secure Apple Developer authentication and read-only verification of the team, matching App ID and registered device. Signing material is not available to the build yet.
+- Correcting the user's actual iOS 27.2 launcher crash: UUID/source/plist matched; missing UIScene adoption confirmed against Apple docs; API-compatible pinned contributor backport and real single-scene configuration selected. Package regressions fail before the gate and pass after; real simulator launch and rebuilt IPA verification are still pending.
+- Adding versioned GitHub Releases requested by the user: version 0.1.1/build 2, official CLI publication after main native build/UI success, version-preserving IPA/compiler/evidence/report/checksum assets. Preparation regressions cover failed/skipped UI tests, changed IPA hashes and accidental private-profile/game publication. Actual release is pending native CI.
+- The user signs locally with LCSign using their own profile. The new crash correction does not require account login or signing-key transfer. Developer archive/export inputs remain unavailable to this environment; no profile eligibility/private-key ownership has been independently verified here.
 
 ## Blocked
 
