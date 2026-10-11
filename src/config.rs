@@ -43,7 +43,7 @@ pub fn game_dir() -> PathBuf {
 
 pub fn game_ready() -> bool {
     let dir = game_dir();
-    dir.join("data/manifest.json").exists() && build_dir(&dir).is_some_and(|b| !cfg!(feature = "jit") || crate::code_embedded() || b.join("game.wasm").exists())
+    dir.join("data/manifest.json").is_file() && build_dir(&dir).is_some_and(|b| !cfg!(feature = "jit") || crate::code_embedded() || b.join("game.wasm").is_file())
 }
 
 pub fn bundled_resources() -> Option<PathBuf> {
@@ -53,7 +53,18 @@ pub fn bundled_resources() -> Option<PathBuf> {
 }
 
 fn build_dir(root: &Path) -> Option<PathBuf> {
-    std::fs::read_dir(root.join("b")).ok()?.flatten().map(|e| e.path()).find(|p| p.join("shaders/index.json").exists())
+    let mut found = None;
+    for entry in std::fs::read_dir(root.join("b")).ok()? {
+        let path = entry.ok()?.path();
+        let meta = std::fs::symlink_metadata(&path).ok()?;
+        if meta.file_type().is_symlink() { return None; }
+        if meta.is_file() { continue; }
+        if !meta.is_dir() || !path.join("shaders/index.json").is_file() { return None; }
+        if found.is_some() { return None; }
+        if crate::import::expected_build_id().is_some_and(|id| path.file_name().and_then(|n| n.to_str()) != Some(id)) { return None; }
+        found = Some(path);
+    }
+    found
 }
 
 fn set_default(key: &str, value: impl AsRef<std::ffi::OsStr>) {
@@ -109,7 +120,7 @@ pub fn setup() -> anyhow::Result<Startup> {
 
 fn locate() -> anyhow::Result<PathBuf> {
     let root = game_dir();
-    let build = build_dir(&root).filter(|_| game_ready()).ok_or_else(|| anyhow::anyhow!("no game data: import your game .zip from the launcher"))?;
+    let build = build_dir(&root).filter(|_| game_ready()).ok_or_else(|| anyhow::anyhow!("no matching game data: import a game ZIP or folder from the launcher"))?;
     std::env::set_var("MUGUET_DATA", root.join("data"));
     std::env::set_var("MUGUET_SHADERS", build.join("shaders"));
     eprintln!("[config] game {}", root.display());

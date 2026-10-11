@@ -4,6 +4,7 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import os
 
 let configURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     .appendingPathComponent("config.json")
@@ -57,12 +58,18 @@ final class Settings: ObservableObject {
 
 @_silgen_name("muguet_import")
 func muguet_import(_ zip: UnsafePointer<CChar>, _ progress: @convention(c) (UInt64, UInt64) -> Void) -> Bool
+@_silgen_name("muguet_import_directory")
+func muguet_import_directory(_ folder: UnsafePointer<CChar>, _ progress: @convention(c) (UInt64, UInt64) -> Void) -> Bool
 @_silgen_name("muguet_import_error")
 func muguet_import_error() -> UnsafePointer<CChar>?
 @_silgen_name("muguet_game_ready")
 func muguet_game_ready() -> Bool
 @_silgen_name("muguet_has_game_code")
 func muguet_has_game_code() -> Bool
+@_silgen_name("muguet_game_build_id")
+func muguet_game_build_id() -> UnsafePointer<CChar>?
+@_silgen_name("muguet_game_wasm_sha256")
+func muguet_game_wasm_sha256() -> UnsafePointer<CChar>?
 
 final class Importer: ObservableObject {
     static let shared = Importer()
@@ -79,16 +86,31 @@ final class Importer: ObservableObject {
     }
 
     func run(_ url: URL) {
+        guard progress == nil else { return }
         error = nil
         progress = 0
         DispatchQueue.global(qos: .userInitiated).async {
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            let ok = url.path.withCString { muguet_import($0) { done, total in
-                let p = total > 0 ? Double(done) / Double(total) : 0
-                DispatchQueue.main.async { Importer.shared.progress = p }
-            } }
-            let message = ok ? nil : muguet_import_error().map { String(cString: $0) } ?? "unknown error"
+            var coordinationError: NSError?
+            var message: String?
+            let coordinator = NSFileCoordinator(filePresenter: nil)
+            coordinator.coordinate(readingItemAt: url, options: [], error: &coordinationError) { source in
+                do {
+                    let directory = try source.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true
+                    let report: @convention(c) (UInt64, UInt64) -> Void = { done, total in
+                        let p = total > 0 ? min(1, Double(done) / Double(total)) : 0
+                        DispatchQueue.main.async { Importer.shared.progress = p }
+                    }
+                    let ok = source.path.withCString { path in
+                        directory ? muguet_import_directory(path, report) : muguet_import(path, report)
+                    }
+                    if !ok { message = muguet_import_error().map { String(cString: $0) } ?? "unknown error" }
+                } catch {
+                    message = error.localizedDescription
+                }
+            }
+            if let coordinationError { message = coordinationError.localizedDescription }
             DispatchQueue.main.async {
                 self.progress = nil
                 self.ready = muguet_game_ready()
@@ -104,25 +126,42 @@ struct LauncherView: View {
     @State private var error: String?
     @State private var picking = false
     @Environment(\.scenePhase) private var phase
+    @State private var pickingFolder = false
+    @State private var availableMemory = UInt64(os_proc_available_memory())
     let play: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(spacing: 16) {
+            ScrollView {
+              VStack(spacing: 16) {
                 Text("Muguet").font(.largeTitle.weight(.bold))
                 if !muguet_has_game_code() {
-                    Text("This build has no game code: build it with ./make-ios.sh <game.zip>.")
+                    Text("Embedded game code is missing. You can import data here; playing requires an app built with matching game code.")
                         .foregroundStyle(.red).font(.callout).multilineTextAlignment(.center)
-                } else if !importer.ready || importer.progress != nil {
-                    importView
-                } else {
-                    if let error { Text(error).foregroundStyle(.red).font(.callout).multilineTextAlignment(.center) }
-                    playButton
-                    Button("Import other game data…") { picking = true }.font(.caption)
+                }
+                if importer.ready && importer.progress == nil {
+                    Text("Game data imported").font(.callout).foregroundStyle(.secondary)
+                }
+                if let error { Text(error).foregroundStyle(.red).font(.callout).multilineTextAlignment(.center) }
+                playButton.disabled(!muguet_has_game_code() || !importer.ready || importer.progress != nil)
+                importView
+                VStack(spacing: 4) {
+                    Text("Memory available to this app now: \(availableMemory / (1 << 20)) MiB")
+                        .monospacedDigit()
+                    Text("This changes with device conditions and does not guarantee the game will fit.")
+                    Button("Refresh memory reading") { availableMemory = UInt64(os_proc_available_memory()) }
+                }
+                .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                if let id = muguet_game_build_id() {
+                    Text("Embedded build: \(String(cString: id))").font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
+                }
+                if let hash = muguet_game_wasm_sha256() {
+                    Text("Code SHA-256: \(String(cString: hash).prefix(12))…").font(.caption2).foregroundStyle(.secondary)
                 }
                 Text("proudly made by c22dev").font(.caption).foregroundStyle(.secondary)
+              }
+              .padding(24)
             }
-            .padding(24)
             .frame(maxWidth: .infinity)
             Form {
                 Picker("Mode", selection: $s.mode) {
@@ -174,11 +213,23 @@ struct LauncherView: View {
             .frame(maxWidth: .infinity)
         }
         .preferredColorScheme(.dark)
-        .fileImporter(isPresented: $picking, allowedContentTypes: [.zip]) { result in
-            if case .success(let url) = result { importer.run(url) }
+        .fileImporter(isPresented: $picking, allowedContentTypes: pickingFolder ? [.folder] : [.zip]) { result in
+            switch result {
+            case .success(let url): importer.run(url)
+            case .failure(let error): importer.error = "Could not select data: \(error.localizedDescription)"
+            }
         }
-        .onAppear { importer.scan() }
-        .onChange(of: phase) { p in if p == .active { importer.scan() } }
+        .onAppear {
+            importer.scan()
+            availableMemory = UInt64(os_proc_available_memory())
+        }
+        .onChange(of: phase) { p in
+            if p == .active {
+                importer.scan()
+                availableMemory = UInt64(os_proc_available_memory())
+            }
+        }
+        .onChange(of: importer.progress) { _ in availableMemory = UInt64(os_proc_available_memory()) }
     }
 
     @ViewBuilder var importView: some View {
@@ -187,13 +238,17 @@ struct LauncherView: View {
                 ProgressView(value: p)
                 Text("Importing… \(Int(p * 100)) %").font(.callout).monospacedDigit()
             } else {
-                Button("Import game data .zip") { picking = true }
+                Button(importer.ready ? "Choose another game ZIP…" : "Choose game ZIP…") { pickingFolder = false; picking = true }
                     .controlSize(.large)
                     .buttonStyle(.borderedProminent)
+                Button("Choose game folder…") { pickingFolder = true; picking = true }
+                    .buttonStyle(.bordered)
                 ForEach(importer.local, id: \.self) { url in
                     Button("Import \(url.lastPathComponent)") { importer.run(url) }
                 }
                 Text("If the picker doesn't work, move the zip to Files → On My iPhone → Muguet and it will show up here.")
+                    .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Text("Select the export folder containing data/ and b/ with one build. Existing data is kept until the import succeeds; allow storage for both copies.")
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
             if let e = importer.error { Text(e).foregroundStyle(.red).font(.callout).multilineTextAlignment(.center) }
@@ -217,6 +272,7 @@ struct LauncherView: View {
     }
 
     func start() {
+        guard muguet_has_game_code(), importer.ready, importer.progress == nil else { return }
         if s.multiplayer && !s.host && s.server.trimmingCharacters(in: .whitespaces).isEmpty {
             error = "Enter the host's address to join."
             return

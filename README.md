@@ -1,6 +1,10 @@
 # Muguet
 A native Mach-O iOS/macOS port of GTA V, with multiplayer
 
+This fork preserves [c22dev/muguet](https://github.com/c22dev/muguet), its attribution and GPL-3.0-or-later license. The iOS work uses the official iOS 27.2 SDK, locked Rust dependencies, safe ZIP/folder import and separate developer-signing and sideload packaging paths. Game code and commercial assets are not supplied.
+
+Current verified results and remaining gates: [test report](docs/TEST_REPORT.md) and [progress](docs/PROGRESS.md). A launcher build without embedded game code cannot play GTA V.
+
 ## How does this work ?
 this whole port relies on the WebAssembly compilation of the game. in a browser, that `game.wasm` runs inside the JS engine, behind WebGPU, Web Audio, web workers...
 Muguet throws that layer away and runs the same `game.wasm` as a regular native app, with [wasmtime](https://wasmtime.dev) for the code and [wgpu](https://wgpu.rs) on Metal for the graphics
@@ -16,16 +20,20 @@ It's basically the same source as the web port.
 
 Muguet itself will then asks for that zip
 
+The iOS launcher also lets you select a folder directly containing `data/` and `b/` in Files. It validates the manifest and shader references, copies into staging, and replaces the previous game only after a successful import. This prepares assets on the phone; executable game code must already be compiled and signed into the app. Ordinary PC GTA V files are not a verified input to this pipeline. See [GAME_ASSETS.md](docs/GAME_ASSETS.md) for lawful acquisition requirements, the exact layout and validation commands.
+
 ## Requirements
 - Apple Silicon Mac, macOS 14 or later
 - Rust toolchain
-- Xcode 26 or later
+- Xcode 26 or later for upstream; this fork's verified CI pin is Xcode 27.2 beta 2 (`27B5028f`), iOS SDK 27.2
 
 For iOS, also :
 - `rustup` with `rustup toolchain install 1.98.1` and `rustup target add aarch64-apple-ios --toolchain 1.98.1`
 - `xcodegen` (`brew install xcodegen`)
 - an Apple developer account
 - a device on iOS 15 or later, ideally 8 GB of RAM
+
+Xcode 27 requires macOS 26.6 or later. The user's iPhone 17 Pro Max / iOS 27.2 developer beta 3 has not been physically tested here. Neither physical RAM nor a memory entitlement guarantees the app an 8 GB allocation. The launcher reports Apple's current process-memory estimate; `MUGUET_IOS_HEAP_GB` controls the compile-time guest cap and must match the precompiler and runtime.
 
 ## Building
 macOS :
@@ -36,13 +44,15 @@ gives `build/Muguet.app`
 
 iOS :
 ```
-TEAM=<your team id> ./make-ios.sh game.zip --install
+TEAM=<your team id> BUNDLE_ID=com.qeyf.muguet ./make-ios.sh game.zip --install <device-identifier>
 ```
-`--ipa` makes `build/Muguet.ipa` instead. With a free account, add `FREE=1` (+ a `BUNDLE_ID` of your own)
+`BUNDLE_ID=com.qeyf.muguet ./make-ios.sh game.zip --ipa` creates `build/Muguet-sideload.ipa` with an ad-hoc self-signature and a default 5 GB guest cap. It is not an Apple Development or registered-device Ad Hoc distribution signature. With no game input, the output is explicitly named `build/Muguet-Launcher-sideload.ipa`.
+
+For an Apple Developer signed IPA, use `--archive` with a matching installed certificate, profile and export options, or the `developer-archive` CI mode. Development and Ad Hoc profiles must include the target iPhone's UDID; capabilities and export methods must match. Complete commands, secrets and diagnostic outputs are documented in [BUILD_IOS.md](docs/BUILD_IOS.md). No signing material belongs in Git.
 
 Please install this app with AltStore. This probably won't work well with Sideloadly (or even SideStore, as per [this issue])(https://github.com/SideStore/SideStore/issues/1616)
 
-The app also works with a paid developer account.
+Upstream supports a paid developer account. Code-signing verification, installation, launch and successful gameplay are separate checks; see the device checklist in [TEST_REPORT.md](docs/TEST_REPORT.md).
 
 ## Multiplayer
 One player hosts from the launcher (or runs `muguet-server` on any machine), the others join with that address. UDP port 47520
@@ -50,6 +60,9 @@ One player hosts from the launcher (or runs `muguet-server` on any machine), the
 ## Limitations
 - iOS needs the increased memory limit entitlement
 - Story missions are single player only
+- A lawful matching browser WASM/data/shader export is required. No supported retail-PC-to-WASM converter was found.
+- Import validates file inventory and build-directory identity; it does not establish asset licensing, a producer signature, shader compilation or actual gameplay.
+- Memory pressure, Jetsam, beta SDK compatibility and GPU allocations require testing on the actual device.
 
 ## Credits
 - [Kagander](https://github.com/Kagander) for fixing the minimap

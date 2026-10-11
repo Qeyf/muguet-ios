@@ -6,7 +6,11 @@ use std::process::Command;
 fn main() {
     println!("cargo::rustc-check-cfg=cfg(game_code)");
     println!("cargo:rerun-if-env-changed=MUGUET_GAME_CODE");
-    if std::env::var("MUGUET_GAME_CODE").is_ok_and(|p| std::path::Path::new(&p).is_file()) {
+    println!("cargo:rerun-if-env-changed=MUGUET_GAME_BUILD_ID");
+    println!("cargo:rerun-if-env-changed=MUGUET_GAME_WASM_SHA256");
+    println!("cargo:rerun-if-env-changed=MUGUET_IOS_HEAP_GB");
+    if let Ok(path) = std::env::var("MUGUET_GAME_CODE") {
+        assert!(std::path::Path::new(&path).is_file(), "MUGUET_GAME_CODE must name an existing precompiled module");
         println!("cargo:rustc-cfg=game_code");
     }
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("ios") {
@@ -18,7 +22,10 @@ fn main() {
     let out = std::env::var("OUT_DIR").unwrap();
     let xcrun = |args: &[&str]| {
         let o = Command::new("xcrun").args(args).output().expect("xcrun");
-        String::from_utf8(o.stdout).unwrap().trim().to_string()
+        assert!(o.status.success(), "xcrun {} failed: {}", args.join(" "), String::from_utf8_lossy(&o.stderr));
+        let path = String::from_utf8(o.stdout).unwrap().trim().to_string();
+        assert!(!path.is_empty(), "xcrun {} returned no path", args.join(" "));
+        path
     };
     let sdk = xcrun(&["--sdk", "iphoneos", "--show-sdk-path"]);
     let swiftc = xcrun(&["--sdk", "iphoneos", "-f", "swiftc"]);

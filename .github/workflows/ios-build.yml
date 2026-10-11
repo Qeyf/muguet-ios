@@ -1,0 +1,94 @@
+name: iOS build and package
+
+"on":
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      build_mode:
+        description: Sideload IPA or archive/export with installed developer signing assets
+        type: choice
+        options: [sideload, developer-archive]
+        default: sideload
+      game_source:
+        description: Optional authorized input; local input selects an existing self-hosted Mac
+        type: choice
+        options: [none, secret-download, self-hosted]
+        default: none
+      heap_gb:
+        description: Heap shared by the host precompiler and iOS runtime (integer 1..8)
+        type: string
+        default: "5"
+      export_method:
+        description: Developer archive export method (exports a file; does not submit it)
+        type: choice
+        options: [debugging, release-testing, app-store-connect]
+        default: debugging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    # Standard public preview runner. No large/paid runner is provisioned.
+    # Local inputs use an already configured self-hosted ARM64 Mac with this label.
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.game_source == 'self-hosted' && fromJSON('["self-hosted", "macOS", "ARM64", "muguet-ios"]') || 'xcode-27' }}
+    timeout-minutes: 90
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2_beta_2.app/Contents/Developer
+      MUGUET_CI_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mode || 'sideload' }}
+      MUGUET_GAME_SOURCE: ${{ github.event_name == 'workflow_dispatch' && inputs.game_source || 'none' }}
+      MUGUET_IOS_HEAP_GB: ${{ inputs.heap_gb || '5' }}
+      MUGUET_EXPORT_METHOD: ${{ inputs.export_method || 'debugging' }}
+      BUNDLE_ID: ${{ vars.MUGUET_BUNDLE_ID || 'com.qeyf.muguet' }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check portable build and assets policy
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Build actual launcher or authorized precompiled game
+        shell: bash
+        env:
+          # Game/signing credentials are available only to explicitly selected
+          # manual modes. PR and push builds always use launcher-only sideloading.
+          MUGUET_GAME_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.game_source == 'secret-download' && secrets.MUGUET_GAME_URL || '' }}
+          MUGUET_GAME_SHA256: ${{ github.event_name == 'workflow_dispatch' && inputs.game_source != 'none' && secrets.MUGUET_GAME_SHA256 || '' }}
+          MUGUET_GAME_LOCAL_PATH: ${{ github.event_name == 'workflow_dispatch' && inputs.game_source == 'self-hosted' && vars.MUGUET_GAME_LOCAL_PATH || '' }}
+          TEAM: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mode == 'developer-archive' && secrets.APPLE_TEAM_ID || '' }}
+          MUGUET_SIGNING_IDENTITY: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mode == 'developer-archive' && secrets.MUGUET_SIGNING_IDENTITY || '' }}
+          MUGUET_SIGNING_P12_BASE64: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mode == 'developer-archive' && secrets.MUGUET_SIGNING_P12_BASE64 || '' }}
+          MUGUET_SIGNING_P12_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mode == 'developer-archive' && secrets.MUGUET_SIGNING_P12_PASSWORD || '' }}
+          MUGUET_PROVISION_PROFILE_BASE64: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mode == 'developer-archive' && secrets.MUGUET_PROVISION_PROFILE_BASE64 || '' }}
+          MUGUET_DEVICE_UDID: ${{ github.event_name == 'workflow_dispatch' && inputs.build_mode == 'developer-archive' && inputs.export_method != 'app-store-connect' && secrets.MUGUET_DEVICE_UDID || '' }}
+        run: ./scripts/build-ios-ci.sh
+
+      - name: Retain build evidence on success or failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: iOS-build-evidence-${{ github.run_id }}
+          path: build/ios-ci/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Retain verified IPA and optional developer archive
+        if: success()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ env.MUGUET_GAME_SOURCE == 'none' && 'Muguet-Launcher' || 'Muguet-AuthorizedGame' }}-${{ env.MUGUET_CI_MODE }}
+          path: |
+            build/*-sideload.ipa
+            build/*.xcarchive.zip
+            build/export/*.ipa
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

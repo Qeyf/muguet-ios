@@ -30,6 +30,7 @@ targets:
       - name: Use the Rust executable
         basedOnDependencyAnalysis: false
         script: |
-          set -e
-          xcrun vtool -set-build-version ios 15.0 26.0 -replace -output "$TARGET_BUILD_DIR/$EXECUTABLE_PATH" \
+          set -eu
+          SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
+          xcrun vtool -set-build-version ios "$IPHONEOS_DEPLOYMENT_TARGET" "$SDK_VERSION" -replace -output "$TARGET_BUILD_DIR/$EXECUTABLE_PATH" \
             "$SRCROOT/../target/ios/aarch64-apple-ios/release/muguet"
