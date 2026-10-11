@@ -1,6 +1,6 @@
 # Verification report
 
-Date: 2026-10-11. Upstream main: `3c4ea719ac56049f92681f854783360133b55156`. Device target is user-reported iPhone 17 Pro Max, arm64, iOS 27.2 developer beta 3; the physical device and installed OS were not accessed.
+Date: 2026-10-11. Retained runtime baseline: `3c4ea719ac56049f92681f854783360133b55156`. Latest upstream main `a2f781683160993ad15a8a04fbf09e7027a831a6` was separately reviewed; its later README/desktop-build changes do not supply an iOS scene fix. Device target is user-reported iPhone 17 Pro Max, arm64, iOS 27.2 developer beta 3; the physical device and installed OS were not accessed.
 
 **Subsequent physical crash evidence:** the user re-signed the first launcher IPA through LCSign and supplied an iPhone18,2 / iOS 27.2 `24B5099f` crash log. It records an immediate UIKit scene-lifecycle assertion. The executable UUID matches the delivered package exactly. This establishes a failed first launch for that package on the reported device, not successful installation/gameplay testing by this environment. The correction and required native launch verification are recorded in [IOS27_SCENE_FIX.md](IOS27_SCENE_FIX.md); corrected physical-device launch is pending retest.
 
@@ -13,17 +13,18 @@ Date: 2026-10-11. Upstream main: `3c4ea719ac56049f92681f854783360133b55156`. Dev
 | Dependency lock | `cargo +1.98.1 metadata --locked --no-deps` passed; Cargo.lock retained |
 | Rust production importer | 22 tests passed; real `src/import.rs` compiled by standalone harness |
 | Python asset/security tests | 24 tests passed after review fixes; synthetic inputs, not game data |
-| Build policy tests | 25 portable command-recorder tests passed locally and in native run 38151257119, including UDID, actual disk-capacity evidence and no-game host compiler failure/packaging policy; initial native runs used 23 |
+| Portable policies | 66 local Python tests passed: 24 assets, 29 build policy, 7 simulator boundary and 6 release policy. Main run 38172991013 passed all 66 as well; the preceding PR run passed its then-current 64 tests. The two added tests cover exact-source/orphan-tag publication |
 | Shell/diff checks | Bash syntax and `git diff --check` passed locally |
 | Local native build | Real command attempted, rejected: `iOS builds require macOS with Xcode installed` |
 | GitHub fork | `Qeyf/muguet-ios` created; separate work branch; upstream baseline preserved as `upstream-main`, verified CI integrated into default main |
-| Apple Silicon native build | Passed [run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526); Rust arm64 executable, linked SwiftUI helper and Xcode packaging succeeded; no launch test was performed in that run |
+| Corrected Apple Silicon build | Passed [main run 38172991013](https://github.com/Qeyf/muguet-ios/actions/runs/38172991013): Rust arm64 device executable, linked SwiftUI helper, host AOT compiler, actual Xcode packaging and strict codesign |
+| Native launcher lifecycle | One genuine XCUITest passed without failures/skips: visible controls, Home/background and reactivation on iPhone 18 Pro Max / iOS 27.0 (`24A434`), built with SDK 27.2 |
 | Native macOS AOT compiler tool | Passed actual run 38151257119; arm64 MACOS, SDK 27.2, strict codesign, compiled/package hashes and ZIP CRC verified. No real game WASM was executed |
-| Launcher IPA | Produced and downloaded `Muguet-Launcher-sideload.ipa`, 9,448,192 bytes; ZIP CRC and SHA-256 match CI evidence |
+| Published main IPA | [v0.1.1/build 2](https://github.com/Qeyf/muguet-ios/releases/tag/v0.1.1), 9448912 bytes; SHA-256 `ca8cc17e4809b53525773b4cf51a528fd5de4660a26d0cb8cb17043b8cb49c68`; public download/CRC/hash/plist/Mach-O independently verified |
 | Launcher signature/platform | Actual macOS strict codesign passed; ad-hoc self-signature, no TeamIdentifier or provisioning profile; arm64, IOS, minimum 15.0, SDK 27.2 |
 | Real WASM/asset verification | Blocked by missing authorized complete input; candidates not binary-validated |
 | AOT game compilation | Not run; no lawful real game WASM available |
-| Developer signing/profile | Not configured or verified; Apple portal sign-in and device UDID are outstanding |
+| User signing/profile | User signs through LCSign with their own profile. Signing secrets are not required for this crash fix; this environment has not verified that private profile or its entitlements |
 | Installable developer IPA | Not produced |
 | Device launch | User-provided crash log proves first launcher failed at UIKit's no-scene-lifecycle assertion; corrected device retest pending |
 | Gameplay/FPS/RAM/thermal testing | Not run |
@@ -32,7 +33,31 @@ A review follow-up found regular metadata files such as `b/.DS_Store` were incor
 
 No synthetic fixture, recorder-produced ZIP, launcher without code, valid inventory or self-signature is described as a working GTA V installation.
 
-## Actual native build and artifact evidence
+## Corrected scene build evidence
+
+[Run 38170769173](https://github.com/Qeyf/muguet-ios/actions/runs/38170769173), native job `114562716712`, passed. PR head `597363ba9f9652a3fb62eb35ace7c1c7c75fa3b4` and actual checkout `aec919b3c9a8630942c78f5be8ee9304ebbde9ff` were independently confirmed to have the identical tree `c3729bec92fa8b855caf4afa8f96cbd360b2047c`. The source was merged as PR #3. Xcode 27.2 beta 2 (`27B5028f`), SDK 27.2, Rust 1.98.1 and XcodeGen 2.46.0 were used on macOS 27.0.1. The simulator actually ran iOS 27.0 (`24A434`), not iOS 27.2.
+
+The corrected IPA’s UUID is `c9c912da-d158-34bd-9e8b-d0cd6dda463f`. Packaged UIApplicationSceneManifest, UIWindowScene, connectedScenes and setWindowScene selectors are present. arm64/IOS/minimum 15.0/SDK 27.2, ZIP CRC and native-run SHA-256 all passed independent inspection. Actual macOS strict codesign passed; Linux inspection only reads the embedded blob. The ad-hoc package has increased-memory-limit but no extended-virtual-addressing entitlement, provisioning profile or game segment. No 8 GB allocation or device entitlement eligibility is claimed.
+
+### Published main Release
+
+[Run 38172991013](https://github.com/Qeyf/muguet-ios/actions/runs/38172991013) passed both the actual native job `114569406535` and publication job `114574462768`. Exact source/tag target: `c0aa4af39503a91f87a0ab50b6ae346f7783bea9`. It passed 66 Python tests, 22 production Rust importer tests, both native compiler/device builds, strict codesign and one genuine XCUITest (33.184 seconds; zero failed/skipped, no runtime warnings). SDK 27.2 and simulator iPhone 18 Pro Max / iOS 27.0 (`24A434`) are separate measured facts.
+
+[v0.1.1 / build 2](https://github.com/Qeyf/muguet-ios/releases/tag/v0.1.1) is a prerelease, with no physical-device success claimed. The exact published IPA is 9,448,912 bytes, SHA-256 `ca8cc17e4809b53525773b4cf51a528fd5de4660a26d0cb8cb17043b8cb49c68`, UUID `7e89047c-9598-3d8c-9228-3be58e1a98b6`. It is a new main compilation; the earlier corrected PR IPA above has a different digest/UUID and remains historical evidence.
+
+All five public Release assets were downloaded and SHA-256 checked against GitHub metadata; every SHA256SUMS row matched. The IPA and Mac compiler are byte-identical to the same run’s native artifact. Every file in the 72-file published evidence ZIP is byte-identical to that run’s native evidence, including xcresults. ZIP CRC/paths passed. The release ref points to the tested source, not a later documentation commit.
+
+```text
+IPA: ca8cc17e4809b53525773b4cf51a528fd5de4660a26d0cb8cb17043b8cb49c68
+Mac compiler ZIP: 5afbcf3cf9a4706b4b8a135389ea3768e9b8896f032938458f378cd1e1e6da64
+Release evidence ZIP: 2ec7b1dc9f2ce0a7865a29f4ce52837ace7d0ae9e5933822e7002785140aab35
+SHA256SUMS: 3680a5a59f4c19f79622e3af0acdfb2fc5cdbcfc2c88a13a6a6c52a1311bae0e
+Release report: 3d1ab9c170d4771f827426a51efd4c7992c79e2722cb5a63cb51749656f4886b
+Native package artifact ZIP: 5fa872ebd4067252f4139f65c5d422c3bda488b7fe9dc62ffac97ec160bcd86f
+Native evidence artifact ZIP: 8116abfcba1e8208d5b095b6d5a2bbe0bd1b8ff9ce603927fd2ced24bf7066e7
+```
+
+## Historical first-build evidence — crashed on iOS 27.2
 
 The first PR build completed successfully on 2026-10-11 using GitHub's `xcode-27` Apple Silicon runner: macOS 27.0.1, image `20261006.0244.1`, Xcode 27.2 beta 2 (`27B5028f`), iOS SDK 27.2, Rust 1.98.1 and XcodeGen 2.46.0. The tested PR head was `3c67a8bc584a0fc06f5c5493835efbc9612cd8f8`; checkout recorded GitHub's PR merge revision `b409211c830af0bf4ed9edcad8c470b7eacc0e55`. Job `114498991869` passed the 47 portable Python tests, 22 production Rust importer tests, real native build, strict code-signature/platform checks and artifact uploads. The build emitted two warnings from the upstream patched wgpu-core (unused `clear` and an unfulfilled lint expectation), with no build error.
 

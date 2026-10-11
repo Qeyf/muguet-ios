@@ -47,6 +47,8 @@ After a successful push build on `main`, a separate job downloads that same run'
 
 Each release includes a sideload IPA requiring eligible local re-signing, the separate Mac compiler, native evidence ZIP, TEST_REPORT.md and SHA256SUMS. An existing published version is preserved; an existing draft stops the job for inspection. The job explicitly creates the exact source tag before `gh release create --verify-tag`, rejecting any existing orphan tag without changing it. To publish another version, increase `CFBundleShortVersionString` and `CFBundleVersion` in `ios/Info.plist` before merging verified changes. Physical tests remain pending until the actual device is retested. The [GitHub CLI release documentation](https://cli.github.com/manual/gh_release_create) describes the publication/tagging API used here.
 
+The first versioned release is [v0.1.1 / build 2](https://github.com/Qeyf/muguet-ios/releases/tag/v0.1.1), built and published by [run 38172991013](https://github.com/Qeyf/muguet-ios/actions/runs/38172991013) at exact source `c0aa4af39503a91f87a0ab50b6ae346f7783bea9`. That run passed 66 Python tests, 22 production importer tests and actual native builds/UI testing. Its simulator runtime was iOS 27.0 (`24A434`) on iPhone 18 Pro Max; SDK 27.2 compilation does not establish physical beta-3 compatibility. See TEST_REPORT.md for downloaded hashes and device retest gates.
+
 ## Build modes
 
 Launcher only, ad-hoc self-signature:
@@ -96,7 +98,7 @@ Outputs on success: `build/Muguet.xcarchive` and `build/export/*.ipa`; launcher-
 
 ## GitHub Actions
 
-`.github/workflows/ios-build.yml` uses the standard public-preview `xcode-27` arm64 runner, explicit Xcode selection and commit-pinned official checkout/upload actions. Pushes to main and pull requests build the launcher. Optional game/signing secrets are limited to explicitly selected manual builds; PRs never receive them. No paid larger runner or self-hosted machine is provisioned automatically.
+`.github/workflows/ios-build.yml` uses the standard public-preview `xcode-27` arm64 runner, explicit Xcode selection and commit-pinned official checkout/upload actions. Pushes containing non-Markdown changes to main and pull requests build the launcher. Markdown-only main updates are ignored, so recording measured results does not repeat the native build. Manual dispatch remains available. Optional game/signing secrets are limited to explicitly selected manual builds; PRs never receive them. No paid larger runner or self-hosted machine is provisioned automatically.
 
 GitHub requires a `workflow_dispatch` workflow to exist on the repository's default branch. The verified preparation is integrated into this fork's `main`; the original upstream baseline is retained as `upstream-main`, and the separate development branch remains available. Select the reviewed work branch or main for a manual build and supply the protected inputs. A manual developer/game run has not yet been executed. See [GitHub's manual-run requirements](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
 

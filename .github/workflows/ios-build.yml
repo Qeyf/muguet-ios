@@ -3,6 +3,7 @@ name: iOS build and package
 "on":
   push:
     branches: [main, master]
+    paths-ignore: ["**/*.md"]
   pull_request:
   workflow_dispatch:
     inputs:
