@@ -13,11 +13,13 @@ Updated 2026-10-11; each status describes evidence rather than intended behavior
 - Preserved upstream AOT architecture and dependencies; added locked host/device build, explicit SDK scope, developer archive/export mode and honest sideload/launcher artifact names.
 - Added CI diagnostics, optional private hash-checked authorized inputs, temporary signing assets with cleanup and package signature/architecture checks.
 - Ran real importer tests and portable policy/security checks; fixed an independent-review validator mismatch with failing-before/passing-after evidence.
+- Completed [actual Apple Silicon CI run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526): 47 Python tests, 22 Rust importer tests, Rust/Swift/native build, strict codesign and arm64/IOS/SDK checks passed.
+- Downloaded and checksum/CRC-verified the real launcher IPA and build evidence, including `.xcresult`. The IPA has an ad-hoc self-signature and no game code or provisioning profile; its exact hash is recorded in the test report.
 - Prepared build, assets, test and continuation documentation.
 
 ## In progress
 
-- First actual GitHub Apple Silicon launcher build. Record its URL, log stage, exit status and real artifacts in the test report when available. No game export is needed for this stage.
+- Secure Apple Developer authentication and read-only verification of the team, matching App ID and registered device. Signing material is not available to the build yet.
 
 ## Blocked
 
@@ -25,16 +27,16 @@ Updated 2026-10-11; each status describes evidence rather than intended behavior
 | --- | --- |
 | Lawful real game export / game.zip | No rights-holder-authorized compatible WASM/data/shader source or supported retail exporter established |
 | Binary hash/ABI/asset consistency | No real authorized binaries supplied; published mirror numbers are not independently measured files |
-| Native arm64 game AOT | Requires that exact real WASM and a suitable Apple Silicon host |
+| Native arm64 game AOT | Apple Silicon launcher build capacity is verified; AOT still requires the exact lawful real WASM and adequate game-compilation RAM/disk |
 | Developer signed device IPA | Apple Developer sign-in, team/App ID/certificate/profile/capabilities and target UDID not verified |
 | Physical iPhone execution | This environment has no connection to the user's phone |
 | FPS, RAM, heat, audio/input, Jetsam | Require a signed game build, complete matching assets and actual device testing |
 
-No installer-ready or playable GTA V result is claimed. A launcher-only self-signed package, if the actual CI produces one, is a separate intermediate output.
+No developer-installer-ready or playable GTA V result is claimed. The actual launcher-only self-signed IPA is a verified separate intermediate output.
 
 ## Next technical actions
 
-1. Inspect actual CI logs, correct a demonstrated cause, and rerun the affected stage; do not repeatedly run an unchanged failing build.
+1. Preserve the successful native build and its downloaded evidence. Correct and rerun only an affected stage if a new input or demonstrated failure requires it.
 2. Obtain the already lawful complete browser export and trusted producer/build hashes. Validate locally; keep game data out of Git/public artifacts.
 3. On adequate existing Apple Silicon capacity, run AOT and device build against the same lock/toolchain/heap cap. Check required module symbols/imports through the upstream precompiler.
 4. Authenticate Apple Developer securely, confirm `com.qeyf.muguet`, target UDID and capability eligibility, and provide matching signing inputs through protected secrets or the local Mac keychain.

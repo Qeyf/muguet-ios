@@ -15,7 +15,9 @@ Date: 2026-10-11. Upstream main: `3c4ea719ac56049f92681f854783360133b55156`. Dev
 | Shell/diff checks | Bash syntax and `git diff --check` passed locally |
 | Local native build | Real command attempted, rejected: `iOS builds require macOS with Xcode installed` |
 | GitHub fork | `Qeyf/muguet-ios` created; separate work branch, main preserved |
-| Apple Silicon native build | Pending first actual CI run; update with run/log evidence before claiming success |
+| Apple Silicon native build | Passed [run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526); Rust arm64 static library, Swift launcher, native link and Xcode build succeeded |
+| Launcher IPA | Produced and downloaded `Muguet-Launcher-sideload.ipa`, 9,448,192 bytes; ZIP CRC and SHA-256 match CI evidence |
+| Launcher signature/platform | Actual macOS strict codesign passed; ad-hoc self-signature, no TeamIdentifier or provisioning profile; arm64, IOS, minimum 15.0, SDK 27.2 |
 | Real WASM/asset verification | Blocked by missing authorized complete input; candidates not binary-validated |
 | AOT game compilation | Not run; no lawful real game WASM available |
 | Developer signing/profile | Not configured or verified; Apple portal sign-in and device UDID are outstanding |
@@ -25,6 +27,24 @@ Date: 2026-10-11. Upstream main: `3c4ea719ac56049f92681f854783360133b55156`. Dev
 A review follow-up found regular metadata files such as `b/.DS_Store` were incorrectly counted as build directories. Two positive ZIP/folder fixtures reproduced the error, then passed after matching the production importer policy. Disk-capacity diagnostics and download reserve enforcement were also added after review.
 
 No synthetic fixture, recorder-produced ZIP, launcher without code, valid inventory or self-signature is described as a working GTA V installation.
+
+## Actual native build and artifact evidence
+
+The first PR build completed successfully on 2026-10-11 using GitHub's `xcode-27` Apple Silicon runner: macOS 27.0.1, image `20261006.0244.1`, Xcode 27.2 beta 2 (`27B5028f`), iOS SDK 27.2, Rust 1.98.1 and XcodeGen 2.46.0. The tested PR head was `3c67a8bc584a0fc06f5c5493835efbc9612cd8f8`; checkout recorded GitHub's PR merge revision `b409211c830af0bf4ed9edcad8c470b7eacc0e55`. Job `114498991869` passed the 47 portable Python tests, 22 production Rust importer tests, real native build, strict code-signature/platform checks and artifact uploads. The build emitted two warnings from the upstream patched wgpu-core (unused `clear` and an unfulfilled lint expectation), with no build error.
+
+Downloaded artifact ZIPs were checked against GitHub's reported SHA-256 and passed CRC checks. The extracted IPA also matches `artifact-sha256.txt` from the runner:
+
+```text
+Muguet-Launcher-sideload.ipa
+bytes: 9448192
+sha256: adcd7f2a2d91989e01fc6029da2f6fc36e137a209711f577eec39925a704b60b
+IPA artifact ZIP: bbc13dbcb3a3fc8e4c823ae7e766e139a8c7fd366727b71dfd370d0172d36abd
+Evidence artifact ZIP: 999647be0a0891107c815299acf650cec64fd9b67045a0f66c5836450cdb5c17
+```
+
+Local read-only inspection of the actual IPA independently confirmed `com.qeyf.muguet`, arm64 Mach-O, IOS platform, minimum 15.0, SDK 27.2, an embedded signature blob, no `embedded.mobileprovision` and no `__GAME` segment. It did not rerun Apple's codesign tool on Linux. `Signature=adhoc` and `TeamIdentifier=not set` are recorded by actual macOS codesign output. This package requires authorized re-signing for installation and cannot play GTA V. No AOT game code was compiled, no `game.zip` or developer-signed IPA was produced, and no `.xcarchive` was generated in this sideload run.
+
+The evidence artifact contains actual build/environment/importer logs, signature and Mach-O output, disk-capacity measurements, the IPA digest and `build.xcresult`. Artifacts expire after 14 days on GitHub; the downloaded evidence and IPA are also delivered separately. The later report-only commit does not change the runtime tested by this run.
 
 ## Defects and regression evidence
 
@@ -64,4 +84,4 @@ Use Apple's Instruments on the connected device for memory/CPU/Metal measurement
 
 `os_proc_available_memory()` is a changing process allowance estimate, not a guest-plus-Metal allocation guarantee. Extended virtual addressing increases address space, not physical RAM; increased memory limit is conditional on device/OS/profile. The upstream shared-memory minimum and GPU usage must fit. Runtime heap reduction is not an automatic universal solution because the AOT engine configuration and module memory requirements constrain it.
 
-File-provider behavior, Apple filesystem Unicode normalization, beta SDK linking/deprecations, signed custom-code-memory execution, background recovery, device Jetsam and actual shader validity remain unverified until native/device testing. The upstream line-based DLC XML cleanup remains unchanged; compact producer XML with skipped names is a known inherited risk.
+Native Rust/Swift compilation and linking with the selected beta SDK are verified for the launcher. File-provider behavior on the phone, Apple filesystem Unicode normalization, signed custom-code-memory execution with real AOT game code, background recovery, device Jetsam and actual shader validity remain unverified until device testing. The upstream line-based DLC XML cleanup remains unchanged; compact producer XML with skipped names is a known inherited risk.

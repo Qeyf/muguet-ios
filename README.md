@@ -5,6 +5,8 @@ This fork preserves [c22dev/muguet](https://github.com/c22dev/muguet), its attri
 
 Current verified results and remaining gates: [test report](docs/TEST_REPORT.md) and [progress](docs/PROGRESS.md). A launcher build without embedded game code cannot play GTA V.
 
+[Actual Apple Silicon CI run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526) successfully built and verified the arm64 launcher with iOS SDK 27.2. Its `Muguet-Launcher-sideload.ipa` is self-signed and contains no game code; developer signing and physical-device gameplay remain outstanding.
+
 ## How does this work ?
 this whole port relies on the WebAssembly compilation of the game. in a browser, that `game.wasm` runs inside the JS engine, behind WebGPU, Web Audio, web workers...
 Muguet throws that layer away and runs the same `game.wasm` as a regular native app, with [wasmtime](https://wasmtime.dev) for the code and [wgpu](https://wgpu.rs) on Metal for the graphics

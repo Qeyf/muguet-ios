@@ -111,6 +111,8 @@ Optional repository variable `MUGUET_BUNDLE_ID` overrides the default `com.qeyf.
 
 The helper records dependency/toolchain facts, importer tests, disk capacity, build logs and available Xcode results under `build/ios-ci/`, including failure status. Successful packaging checks strict codesign, the selected team for developer builds, arm64, `IOS` platform, deployment version and SDK for both archive and exported app. Artifacts retain evidence, actual IPA and compressed archive for 14 days. A no-game launcher artifact is explicitly labeled and cannot start GTA V.
 
+The launcher path was executed successfully in [run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526) on the actual Apple Silicon runner. Downloaded artifact integrity, environment, signature, exact IPA hash and limitations are recorded in [TEST_REPORT.md](TEST_REPORT.md). The developer archive and real-game AOT paths still require their matching private inputs and have not been executed.
+
 ## Capacity and physical testing
 
 GitHub's standard arm64 runner lists 7 GB RAM and 14 GB SSD; actual free capacity is recorded and a 2 GiB build reserve is enforced. Authorized downloads also reject a declared or streamed size that would consume that reserve. This reserve is a minimum preflight, not a guarantee that every large AOT build will fit. Producer metadata inspected elsewhere describes roughly 20.9 GB of data alone, which is not downloaded or verified here. A complete source ZIP, extraction, Rust outputs, archive and temporary copies can exceed the standard runner. Use existing suitable self-hosted hardware when the measured archive and build exceed capacity. A paid alternative requires separate authorization.
