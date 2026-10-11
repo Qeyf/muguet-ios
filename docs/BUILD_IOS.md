@@ -63,6 +63,8 @@ TEAM=<TEAM_ID> BUNDLE_ID=com.qeyf.muguet MUGUET_IOS_HEAP_GB=5 FREE=1 \
 
 The host precompiler uses the macOS SDK and an explicit Rust host target. It patches the real WASM through upstream `src/patch.rs`, precompiles it for `aarch64-apple-ios`, and writes `game.cwasm`. The device build disables JIT and `build.rs` embeds that module into `__GAME,__code`; Xcode preserves the executable segment and signs it. No imported executable code is compiled or made executable on the phone. Upstream optional Binaryen/wasm-opt optimization is not enabled in this reproducible path; the upstream precompiler still patches raw WASM itself, so no additional optimizer is required.
 
+Launcher CI also compiles the unchanged upstream macOS host binary with default compiler features, the macOS SDK, explicit arm64 host target and two Cargo jobs. It checks the actual Mach-O platform/architecture and local signature, then packages `Muguet-AOT-compiler-macos-arm64.zip` with the GPL license, source revision and binary hash. It does not execute game WASM. This additional native stage must pass before its artifact is described as built; compilation of the tool alone does not prove real game AOT or runtime compatibility.
+
 ZIP builds bind the embedded build ID and record the source WASM SHA-256. Legacy raw `.wasm` builds are supported with an explicit warning; they cannot establish matching data/shader identity and should not be used for reproducible distribution.
 
 ## Apple Developer archive/export

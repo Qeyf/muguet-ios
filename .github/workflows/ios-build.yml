@@ -87,6 +87,7 @@ jobs:
           name: ${{ env.MUGUET_GAME_SOURCE == 'none' && 'Muguet-Launcher' || 'Muguet-AuthorizedGame' }}-${{ env.MUGUET_CI_MODE }}
           path: |
             build/*-sideload.ipa
+            build/Muguet-AOT-compiler-macos-arm64.zip
             build/*.xcarchive.zip
             build/export/*.ipa
           if-no-files-found: error

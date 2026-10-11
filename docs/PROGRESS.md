@@ -20,6 +20,7 @@ Updated 2026-10-11; each status describes evidence rather than intended behavior
 
 ## In progress
 
+- Actual CI compilation and packaging of the upstream macOS arm64 AOT compiler without game input; two new command-contract tests reproduced the missing stage/failure gate before implementation, then the complete 49-test Python suite passed locally.
 - Secure Apple Developer authentication and read-only verification of the team, matching App ID and registered device. Signing material is not available to the build yet.
 
 ## Blocked

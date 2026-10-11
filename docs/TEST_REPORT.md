@@ -11,11 +11,12 @@ Date: 2026-10-11. Upstream main: `3c4ea719ac56049f92681f854783360133b55156`. Dev
 | Dependency lock | `cargo +1.98.1 metadata --locked --no-deps` passed; Cargo.lock retained |
 | Rust production importer | 22 tests passed; real `src/import.rs` compiled by standalone harness |
 | Python asset/security tests | 24 tests passed after review fixes; synthetic inputs, not game data |
-| Build policy tests | 23 portable command-recorder tests passed, including UDID and actual disk-capacity evidence |
+| Build policy tests | 25 portable command-recorder tests passed locally, including UDID, actual disk-capacity evidence and no-game host compiler failure/packaging policy; initial native runs used 23 |
 | Shell/diff checks | Bash syntax and `git diff --check` passed locally |
 | Local native build | Real command attempted, rejected: `iOS builds require macOS with Xcode installed` |
 | GitHub fork | `Qeyf/muguet-ios` created; separate work branch, main preserved |
 | Apple Silicon native build | Passed [run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526); Rust arm64 static library, Swift launcher, native link and Xcode build succeeded |
+| Native macOS AOT compiler tool | New no-game compilation gate prepared; actual CI compilation pending. No real game WASM is executed by this check |
 | Launcher IPA | Produced and downloaded `Muguet-Launcher-sideload.ipa`, 9,448,192 bytes; ZIP CRC and SHA-256 match CI evidence |
 | Launcher signature/platform | Actual macOS strict codesign passed; ad-hoc self-signature, no TeamIdentifier or provisioning profile; arm64, IOS, minimum 15.0, SDK 27.2 |
 | Real WASM/asset verification | Blocked by missing authorized complete input; candidates not binary-validated |
