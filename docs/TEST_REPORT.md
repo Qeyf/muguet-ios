@@ -1,8 +1,8 @@
 # Verification report
 
-Date: 2026-10-11. Retained runtime baseline: `3c4ea719ac56049f92681f854783360133b55156`. Latest upstream main `a2f781683160993ad15a8a04fbf09e7027a831a6` was separately reviewed; its later README/desktop-build changes do not supply an iOS scene fix. Device target is user-reported iPhone 17 Pro Max, arm64, iOS 27.2 developer beta 3; the physical device and installed OS were not accessed.
+Updated: 2026-10-12. Retained runtime baseline: `3c4ea719ac56049f92681f854783360133b55156`. Audited upstream snapshot `a2f781683160993ad15a8a04fbf09e7027a831a6` was separately reviewed; its later README/desktop-build changes do not supply an iOS scene fix. Device target is user-reported iPhone 17 Pro Max, arm64, iOS 27.2 developer beta 3; the physical device and installed OS were not accessed.
 
-**Subsequent physical crash evidence:** the user re-signed the first launcher IPA through LCSign and supplied an iPhone18,2 / iOS 27.2 `24B5099f` crash log. It records an immediate UIKit scene-lifecycle assertion. The executable UUID matches the delivered package exactly. This establishes a failed first launch for that package on the reported device, not successful installation/gameplay testing by this environment. The correction and required native launch verification are recorded in [IOS27_SCENE_FIX.md](IOS27_SCENE_FIX.md); corrected physical-device launch is pending retest.
+**Subsequent physical crash evidence:** the user re-signed the first launcher IPA through LCSign and supplied an iPhone18,2 / iOS 27.2 `24B5099f` crash log. It records an immediate UIKit scene-lifecycle assertion. The executable UUID matches the delivered package exactly. This establishes a failed first launch for that package on the reported device, not successful installation/gameplay testing by this environment. The correction and required native launch verification are recorded in [IOS27_SCENE_FIX.md](IOS27_SCENE_FIX.md); the user subsequently reported reaching the launcher and supplied a screenshot on 2026-10-12. The screen shows missing embedded game code and disabled Play. The app version/UUID and OS build are not shown, so this is user-reported visible-launch evidence, not an independently identified Release build or full physical regression test.
 
 ## Current evidence
 
@@ -26,7 +26,7 @@ Date: 2026-10-11. Retained runtime baseline: `3c4ea719ac56049f92681f854783360133
 | AOT game compilation | Not run; no lawful real game WASM available |
 | User signing/profile | User signs through LCSign with their own profile. Signing secrets are not required for this crash fix; this environment has not verified that private profile or its entitlements |
 | Installable developer IPA | Not produced |
-| Device launch | User-provided crash log proves first launcher failed at UIKit's no-scene-lifecycle assertion; corrected device retest pending |
+| Device launch | First package crashed at the UIKit assertion. User reports later launcher opening and supplies visible-screen evidence on 2026-10-12; screenshot has no version/UUID/OS-build identification. Stability, picker/import/background and game tests remain pending |
 | Gameplay/FPS/RAM/thermal testing | Not run |
 
 A review follow-up found regular metadata files such as `b/.DS_Store` were incorrectly counted as build directories. Two positive ZIP/folder fixtures reproduced the error, then passed after matching the production importer policy. Disk-capacity diagnostics and download reserve enforcement were also added after review.
@@ -131,3 +131,7 @@ Use Apple's Instruments on the connected device for memory/CPU/Metal measurement
 `os_proc_available_memory()` is a changing process allowance estimate, not a guest-plus-Metal allocation guarantee. Extended virtual addressing increases address space, not physical RAM; increased memory limit is conditional on device/OS/profile. The upstream shared-memory minimum and GPU usage must fit. Runtime heap reduction is not an automatic universal solution because the AOT engine configuration and module memory requirements constrain it.
 
 Native Rust/Swift compilation and linking with the selected beta SDK are verified for the launcher. File-provider behavior on the phone, Apple filesystem Unicode normalization, signed custom-code-memory execution with real AOT game code, background recovery, device Jetsam and actual shader validity remain unverified until device testing. The upstream line-based DLC XML cleanup remains unchanged; compact producer XML with skipped names is a known inherited risk.
+
+## User-reported launcher and 14-part follow-up
+
+On 2026-10-12, the user supplied a launcher screenshot. It confirms the visible no-embedded-game-code state for that reported run, not successful GTA V initialization. Screenshot SHA-256: `7348cd8b63d38498ce5e30eace6cd3af0139aafa0c56d493f996f12f7304f670`; 2868 × 1320 pixels. The image itself and personal device data are not committed. The reported 14 ZIPs are not present in this workspace. Candidate metadata was hash-checked and internally examined; actual archives/WASM/shader compatibility and license remain unverified. See GAME_PARTS.md.

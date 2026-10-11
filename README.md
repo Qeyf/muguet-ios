@@ -7,7 +7,7 @@ Current verified results and remaining gates: [test report](docs/TEST_REPORT.md)
 
 [The corrected launcher passed Apple Silicon CI run 38170769173](https://github.com/Qeyf/muguet-ios/actions/runs/38170769173): actual arm64 device compilation, strict ad-hoc codesign and a native launch/background/reactivation XCUITest. The build uses iOS SDK 27.2; the measured simulator is iPhone 18 Pro Max / iOS 27.0 (`24A434`), not the user’s physical iPhone 17 Pro Max / iOS 27.2 beta 3. The IPA is a launcher with no embedded game code and requires re-signing through the user’s own LCSign profile.
 
-The user installed that first IPA through LCSign and reported an immediate UIKit scene-lifecycle crash on iOS 27.2. Compilation did not prove launch compatibility. The current fix pins an audited, API-compatible winit contributor backport, declares a single UIWindowScene, and passed the actual simulator launch/reactivation test before delivery. See [the crash evidence and source audit](docs/IOS27_SCENE_FIX.md). Physical-device retesting remains pending.
+The user installed that first IPA through LCSign and reported an immediate UIKit scene-lifecycle crash on iOS 27.2. Compilation did not prove launch compatibility. The current fix pins an audited, API-compatible winit contributor backport, declares a single UIWindowScene, and passed the actual simulator launch/reactivation test before delivery. See [the crash evidence and source audit](docs/IOS27_SCENE_FIX.md). The user later reports reaching the launcher; identified-build stability, background and gameplay tests remain pending.
 
 [Version 0.1.1 / build 2 is published in GitHub Releases](https://github.com/Qeyf/muguet-ios/releases/tag/v0.1.1) after [successful main build and native UI run 38172991013](https://github.com/Qeyf/muguet-ios/actions/runs/38172991013). Future versioned downloads are published after the same native gates pass. Each launcher prerelease includes the IPA, standalone Mac AOT compiler, native evidence, test report and SHA256SUMS. Its tag targets the exact tested source; existing published versions are retained. The first scene fix is version 0.1.1, build 2. Increase the app version in `ios/Info.plist` for each new release.
 
@@ -27,6 +27,8 @@ It's basically the same source as the web port.
 Muguet itself will then asks for that zip
 
 The iOS launcher also lets you select a folder directly containing `data/` and `b/` in Files. It validates the manifest and shader references, copies into staging, and replaces the previous game only after a successful import. This prepares assets on the phone; executable game code must already be compiled and signed into the app. Ordinary PC GTA V files are not a verified input to this pipeline. See [GAME_ASSETS.md](docs/GAME_ASSETS.md) for lawful acquisition requirements, the exact layout and validation commands.
+
+The user reports reaching the launcher after the scene correction. The screenshot still shows missing embedded game code; selecting assets alone cannot enable Play. For the reported 14 separate ZIPs, [GAME_PARTS.md](docs/GAME_PARTS.md) records archive identification, expected folder selection, preparation and the next required matching-code build. Actual game input and gameplay remain unverified.
 
 ## Requirements
 - Apple Silicon Mac, macOS 14 or later

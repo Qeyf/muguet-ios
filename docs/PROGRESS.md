@@ -1,6 +1,6 @@
 # Progress and blocking inputs
 
-Updated 2026-10-11; each status describes evidence rather than intended behavior.
+Updated 2026-10-12; each status describes evidence rather than intended behavior.
 
 ## Completed
 
@@ -24,11 +24,12 @@ Updated 2026-10-11; each status describes evidence rather than intended behavior
 - Release-tag and runner tool-handoff review regressions failed before correction, passed after; all 66 local Python tests now pass.
 - Completed main [run 38172991013](https://github.com/Qeyf/muguet-ios/actions/runs/38172991013): all 66 Python and 22 real Rust tests, actual compiler/device builds, strict codesign and real launch/background/reactivation XCUITest passed.
 - Published [v0.1.1 / build 2](https://github.com/Qeyf/muguet-ios/releases/tag/v0.1.1) through official GitHub CLI 2.102.0 at exact tested source `c0aa4af39503a91f87a0ab50b6ae346f7783bea9`. IPA, compiler, 72-file native evidence, test report and SHA256SUMS are versioned Release assets. All five public files were downloaded and their digests checked; IPA/compiler exactly match CI, and evidence contents match the same run. No existing version was overwritten.
+- Inspected the user’s launcher screenshot and researched the reported 14-ZIP input model. Hash-verified only two public metadata JSONs, checked their path/part/count consistency, and recorded the nested root, critical code/manifest paths and storage estimates in GAME_PARTS.md. Actual user archives and commercial binaries were not supplied or downloaded.
 - Updated build, assets, test and continuation documentation. The report-only follow-up changes no native source; Markdown-only main pushes do not repeat the heavy build. The filter’s YAML and the six publication policy tests passed locally.
 
 ## In progress
 
-- Corrected physical iPhone 17 Pro Max / iOS 27.2 beta 3 (`24B5099f`) launch remains pending the user’s LCSign reinstall and retest. The simulator result is not physical-device evidence.
+- On 2026-10-12 the user reports opening the launcher and supplies a visible screenshot. Its app version/UUID/OS build are not shown; physical stability, picker/import, background recovery and gameplay still need testing. The screen correctly shows missing embedded game code.
 - The user signs locally with LCSign using their own profile. The new crash correction does not require account login or signing-key transfer. Developer archive/export inputs remain unavailable to this environment; no profile eligibility/private-key ownership has been independently verified here.
 
 ## Blocked
@@ -39,14 +40,14 @@ Updated 2026-10-11; each status describes evidence rather than intended behavior
 | Binary hash/ABI/asset consistency | No real authorized binaries supplied; published mirror numbers are not independently measured files |
 | Native arm64 game AOT | Apple Silicon launcher and upstream host compiler builds are verified; game AOT still requires the exact lawful real WASM and adequate game-compilation RAM/disk |
 | Developer signed device IPA | The user re-signs through LCSign with their own profile; profile/device/capability eligibility has not been verified in this environment |
-| Physical iPhone execution | This environment has no connection to the user's phone |
+| Physical iPhone game validation | User-reported launcher screenshot is available; this environment has no device connection, identified game build or gameplay trace |
 | FPS, RAM, heat, audio/input, Jetsam | Require a signed game build, complete matching assets and actual device testing |
 
 No developer-installer-ready or playable GTA V result is claimed. The actual launcher-only self-signed IPA is a verified separate intermediate output.
 
 ## Next technical actions
 
-1. Re-sign and install the published v0.1.1 launcher through the user’s own LCSign profile; retest launch and background recovery on the real iPhone 17 Pro Max / iOS 27.2 beta 3. Preserve a crash/Jetsam report if it fails.
+1. Identify the user’s actual 14 ZIP filenames/source and authorized export. Obtain the actual compatible WASM plus metadata; verify the complete local data/shader set with the existing validator. Preserve the working launcher; subsequent tests should identify its version/UUID and exact OS build.
 2. Obtain the already lawful complete browser export and trusted producer/build hashes. Validate locally; keep game data out of Git/public artifacts.
 3. On adequate existing Apple Silicon capacity, run AOT and device build against the same lock/toolchain/heap cap. Check required module symbols/imports through the upstream precompiler.
 4. Re-sign the corrected launcher locally through LCSign, preserving required capability eligibility in the user’s matching profile, then retest physical launch. A later developer archive can use a matching local Mac keychain or protected secrets without placing private keys in Git.

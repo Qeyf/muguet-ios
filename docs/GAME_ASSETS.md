@@ -40,6 +40,10 @@ Muguet's GPL license covers its supplied source code, not a separate grant for R
 
 To continue, supply an already lawful, complete browser export with provenance covering local use and compilation, plus producer/exporter information, build identity and trusted checksums. If starting with a licensed PC copy, first provide the authorized exporter/toolchain and its supported game version; do not send arbitrary `.exe`/`.rpf` files as though they are interchangeable with this format. Keep personal game assets private and use them locally or through an access-controlled source; do not attach them to a public PR or release.
 
+## Multiple independent archives
+
+The user reported 14 separate ZIPs. The actual files/source are still unidentified. [GAME_PARTS.md](GAME_PARTS.md) records the researched archive model, exact game-root selection, declared code/manifest paths, capacity arithmetic and the mandatory separation between asset import and embedded AOT code. No automatic byte-concatenation, new import library or arbitrary PC-file conversion was added.
+
 ## Offline validation
 
 ```bash
