@@ -27,11 +27,17 @@ fn main() {
         assert!(!path.is_empty(), "xcrun {} returned no path", args.join(" "));
         path
     };
-    let sdk = xcrun(&["--sdk", "iphoneos", "--show-sdk-path"]);
-    let swiftc = xcrun(&["--sdk", "iphoneos", "-f", "swiftc"]);
+    let simulator = std::env::var("TARGET").unwrap().ends_with("-sim");
+    let (sdk_name, swift_target) = if simulator {
+        ("iphonesimulator", "arm64-apple-ios15.0-simulator")
+    } else {
+        ("iphoneos", "arm64-apple-ios15.0")
+    };
+    let sdk = xcrun(&["--sdk", sdk_name, "--show-sdk-path"]);
+    let swiftc = xcrun(&["--sdk", sdk_name, "-f", "swiftc"]);
     let status = Command::new(&swiftc)
         .args(["-parse-as-library", "-emit-library", "-static", "-O", "-module-name", "MuguetLauncher"])
-        .args(["-target", "arm64-apple-ios15.0", "-sdk", &sdk])
+        .args(["-target", swift_target, "-sdk", &sdk])
         .arg("ios/Launcher.swift")
         .arg("-o")
         .arg(format!("{out}/libmuguetlauncher.a"))
@@ -42,6 +48,6 @@ fn main() {
     println!("cargo:rustc-link-lib=static=muguetlauncher");
 
     println!("cargo:rustc-link-search=native={sdk}/usr/lib/swift");
-    let toolchain = std::path::Path::new(&swiftc).parent().unwrap().parent().unwrap().join("lib/swift/iphoneos");
+    let toolchain = std::path::Path::new(&swiftc).parent().unwrap().parent().unwrap().join("lib/swift").join(sdk_name);
     println!("cargo:rustc-link-search=native={}", toolchain.display());
 }

@@ -15,7 +15,8 @@ serde_json = "1.0.151"
 wgpu = "30.0.1"
 pollster = "1.0.1"
 regex = "1.13.1"
-winit = "0.30.13"
+# API-compatible UIScene contribution; see docs/IOS27_SCENE_FIX.md for audit/status.
+winit = { version = "0.30.13", git = "https://github.com/molenick/winit", rev = "94d6a23c425023810a0879aa7a03abb2e4f1decc" }
 cpal = "0.18.2"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 objc2 = "0.6"
@@ -35,3 +36,7 @@ opt-level = 2
 
 [patch.crates-io]
 wgpu-core = { path = "vendor/wgpu-core" }
+
+# Keep the existing registry dpi version when using winit's Git workspace.
+[patch."https://github.com/molenick/winit"]
+dpi = { version = "=0.1.2" }

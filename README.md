@@ -7,6 +7,10 @@ Current verified results and remaining gates: [test report](docs/TEST_REPORT.md)
 
 [Actual Apple Silicon CI run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526) successfully built and verified the arm64 launcher with iOS SDK 27.2. Its `Muguet-Launcher-sideload.ipa` is self-signed and contains no game code; developer signing and physical-device gameplay remain outstanding.
 
+The user installed that first IPA through LCSign and reported an immediate UIKit scene-lifecycle crash on iOS 27.2. Compilation did not prove launch compatibility. The current fix pins an audited, API-compatible winit contributor backport, declares a single UIWindowScene, and requires an actual simulator launch/reactivation test before delivery. See [the crash evidence and source audit](docs/IOS27_SCENE_FIX.md). Physical-device retesting remains pending.
+
+Versioned downloads will be published under [GitHub Releases](https://github.com/Qeyf/muguet-ios/releases) after the main-branch native build and simulator UI test pass. Each launcher prerelease includes the IPA, standalone Mac AOT compiler, native evidence, test report and SHA256SUMS. Its tag targets the exact tested source; existing published versions are retained. The first scene fix is version 0.1.1, build 2. Increase the app version in `ios/Info.plist` for each new release.
+
 ## How does this work ?
 this whole port relies on the WebAssembly compilation of the game. in a browser, that `game.wasm` runs inside the JS engine, behind WebGPU, Web Audio, web workers...
 Muguet throws that layer away and runs the same `game.wasm` as a regular native app, with [wasmtime](https://wasmtime.dev) for the code and [wgpu](https://wgpu.rs) on Metal for the graphics
