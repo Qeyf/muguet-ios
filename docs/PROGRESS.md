@@ -16,11 +16,12 @@ Updated 2026-10-11; each status describes evidence rather than intended behavior
 - Completed [actual Apple Silicon CI run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526): 47 Python tests, 22 Rust importer tests, Rust/Swift/native build, strict codesign and arm64/IOS/SDK checks passed.
 - A second actual native build [38150188431](https://github.com/Qeyf/muguet-ios/actions/runs/38150188431) also passed. Integrated the verified pipeline into the fork's default `main` so GitHub can offer manual game/signing dispatch; no protected signing/game run has been performed.
 - Downloaded and checksum/CRC-verified the real launcher IPA and build evidence, including `.xcresult`. The IPA has an ad-hoc self-signature and no game code or provisioning profile; its exact hash is recorded in the test report.
+- Completed [actual run 38151257119](https://github.com/Qeyf/muguet-ios/actions/runs/38151257119): 49 Python and 22 production Rust tests, upstream macOS arm64 AOT compiler build/package/signature checks, and the native iOS launcher build all passed. Downloaded the separate compiler package and verified its binary/package SHA-256, ZIP CRC, GPL license, source revision and MACOS/arm64 format. It contains no game code/assets and has processed no real WASM. PR #2 was merged after verification and independent review.
+- Two new no-game compilation/failure-gate tests reproduced the missing stage before implementation, then passed with all 49 Python tests locally and in real CI.
 - Prepared build, assets, test and continuation documentation.
 
 ## In progress
 
-- Actual CI compilation and packaging of the upstream macOS arm64 AOT compiler without game input; two new command-contract tests reproduced the missing stage/failure gate before implementation, then the complete 49-test Python suite passed locally.
 - Secure Apple Developer authentication and read-only verification of the team, matching App ID and registered device. Signing material is not available to the build yet.
 
 ## Blocked
@@ -29,7 +30,7 @@ Updated 2026-10-11; each status describes evidence rather than intended behavior
 | --- | --- |
 | Lawful real game export / game.zip | No rights-holder-authorized compatible WASM/data/shader source or supported retail exporter established |
 | Binary hash/ABI/asset consistency | No real authorized binaries supplied; published mirror numbers are not independently measured files |
-| Native arm64 game AOT | Apple Silicon launcher build capacity is verified; AOT still requires the exact lawful real WASM and adequate game-compilation RAM/disk |
+| Native arm64 game AOT | Apple Silicon launcher and upstream host compiler builds are verified; game AOT still requires the exact lawful real WASM and adequate game-compilation RAM/disk |
 | Developer signed device IPA | Apple Developer sign-in, team/App ID/certificate/profile/capabilities and target UDID not verified |
 | Physical iPhone execution | This environment has no connection to the user's phone |
 | FPS, RAM, heat, audio/input, Jetsam | Require a signed game build, complete matching assets and actual device testing |
