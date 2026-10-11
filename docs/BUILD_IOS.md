@@ -87,6 +87,8 @@ Outputs on success: `build/Muguet.xcarchive` and `build/export/*.ipa`; launcher-
 
 `.github/workflows/ios-build.yml` uses the standard public-preview `xcode-27` arm64 runner, explicit Xcode selection and commit-pinned official checkout/upload actions. Pushes to main and pull requests build the launcher. Optional game/signing secrets are limited to explicitly selected manual builds; PRs never receive them. No paid larger runner or self-hosted machine is provisioned automatically.
 
+GitHub requires a `workflow_dispatch` workflow to exist on the repository's default branch. The verified preparation is integrated into this fork's `main`; the original upstream baseline is retained as `upstream-main`, and the separate development branch remains available. Select the reviewed work branch or main for a manual build and supply the protected inputs. A manual developer/game run has not yet been executed. See [GitHub's manual-run requirements](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
+
 Manual inputs:
 
 | Input | Values |

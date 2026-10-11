@@ -8,12 +8,13 @@ Updated 2026-10-11; each status describes evidence rather than intended behavior
 - Refreshed main to `3c4ea719ac56049f92681f854783360133b55156`; the overnight upstream changes include Metal/shader/minimap, texture decoding, statfs, controller focus handling, background code loading and local ZIP discovery. Their source and updated Cargo.lock are retained. The earlier audit snapshot used `11a914d` and remains identified as a snapshot.
 - Verified official iOS 27.2 SDK / Xcode 27.2 beta 2 availability and GitHub's standard `xcode-27` arm64 image.
 - Investigated supplied game sources and public metadata without downloading unverified commercial game binaries or assets.
-- Created `Qeyf/muguet-ios` fork and separate `work/ios27-verified-build` branch; upstream main remains intact.
+- Created `Qeyf/muguet-ios` fork and separate `work/ios27-verified-build` branch; upstream history is retained, with the audited upstream main snapshot preserved as `upstream-main`.
 - Added ZIP/folder manual import, safe staging, mandatory file/shader checks, same-build binding, disabled Play without embedded code, and Apple's advisory memory reading.
 - Preserved upstream AOT architecture and dependencies; added locked host/device build, explicit SDK scope, developer archive/export mode and honest sideload/launcher artifact names.
 - Added CI diagnostics, optional private hash-checked authorized inputs, temporary signing assets with cleanup and package signature/architecture checks.
 - Ran real importer tests and portable policy/security checks; fixed an independent-review validator mismatch with failing-before/passing-after evidence.
 - Completed [actual Apple Silicon CI run 38149241526](https://github.com/Qeyf/muguet-ios/actions/runs/38149241526): 47 Python tests, 22 Rust importer tests, Rust/Swift/native build, strict codesign and arm64/IOS/SDK checks passed.
+- A second actual native build [38150188431](https://github.com/Qeyf/muguet-ios/actions/runs/38150188431) also passed. Integrated the verified pipeline into the fork's default `main` so GitHub can offer manual game/signing dispatch; no protected signing/game run has been performed.
 - Downloaded and checksum/CRC-verified the real launcher IPA and build evidence, including `.xcresult`. The IPA has an ad-hoc self-signature and no game code or provisioning profile; its exact hash is recorded in the test report.
 - Prepared build, assets, test and continuation documentation.
 
