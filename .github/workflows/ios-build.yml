@@ -148,6 +148,10 @@ jobs:
             exit 0
           fi
           gh --version
-          gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --latest=false \
+          # Creating the ref explicitly rejects orphan tags instead of silently
+          # reusing an old source revision. Never force or replace a tag.
+          gh api --method POST "repos/$GH_REPO/git/refs" \
+            -f "ref=refs/tags/$TAG" -f "sha=$GITHUB_SHA"
+          gh release create "$TAG" --verify-tag --target "$GITHUB_SHA" --prerelease --latest=false \
             --title "Muguet $TAG — iOS 27 launcher" --notes-file release-output/TEST_REPORT.md \
             release-output/*.ipa release-output/*.zip release-output/TEST_REPORT.md release-output/SHA256SUMS
