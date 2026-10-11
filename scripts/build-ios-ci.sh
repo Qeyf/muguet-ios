@@ -144,6 +144,43 @@ SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" cargo "+$TOOLCHAIN" test --locke
   --manifest-path tests/import-harness/Cargo.toml --target "$HOST_TARGET" \
   --target-dir target/ios-import-tests 2>&1 | redact_output | tee "$LOG_DIR/importer-tests.log"
 
+# A lawful game input is not required to compile the upstream host compiler.
+# Game builds compile and use it in make-ios.sh; launcher runs verify it here.
+if [ "$GAME_SOURCE" = none ]; then
+  (
+    unset MUGUET_GAME_CODE MUGUET_GAME_BUILD_ID MUGUET_GAME_WASM_SHA256 || true
+    export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$HOME=/home --remap-path-prefix=$PWD=/muguet"
+    SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" cargo "+$TOOLCHAIN" build --locked --release \
+      --jobs 2 --target "$HOST_TARGET" --target-dir target/ios-precompiler
+  ) 2>&1 | redact_output | tee "$LOG_DIR/host-compiler.log"
+  HOST_BINARY="$PWD/target/ios-precompiler/$HOST_TARGET/release/muguet"
+  xcrun lipo -archs "$HOST_BINARY" | tee "$LOG_DIR/host-compiler-architectures.txt"
+  [ "$(cat "$LOG_DIR/host-compiler-architectures.txt")" = arm64 ] || fail 'host compiler must be arm64'
+  xcrun vtool -show-build "$HOST_BINARY" > "$LOG_DIR/host-compiler-macho.txt"
+  [[ "$(cat "$LOG_DIR/host-compiler-macho.txt")" == *'platform MACOS'* ]] || fail 'host compiler must target macOS'
+  codesign --verify --strict "$HOST_BINARY" > "$LOG_DIR/host-compiler-codesign-verify.txt" 2>&1
+  python3 - "$HOST_BINARY" "$LOG_DIR/host-compiler-sha256.txt" "$PWD/build/Muguet-AOT-compiler-macos-arm64.zip" <<'PY'
+import hashlib, os, pathlib, subprocess, sys, zipfile
+binary = pathlib.Path(sys.argv[1])
+digest = hashlib.sha256(binary.read_bytes()).hexdigest()
+sums = digest + "  muguet\n"
+pathlib.Path(sys.argv[2]).write_text(sums)
+revision = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+readme = ("Muguet upstream AOT compiler, macOS arm64. No game code or assets included.\n"
+          f"Source: https://github.com/Qeyf/muguet-ios/tree/{revision}\n"
+          f"Rust 1.98.1; build heap cap: {os.environ['MUGUET_IOS_HEAP_GB']} GiB.\n"
+          "Use only with an authorized compatible WASM export and the same iOS build configuration.\n"
+          "./muguet --precompile-ios /authorized/game.wasm /private/game.cwasm\n"
+          "The compiler has not processed real game WASM in this launcher run.\n"
+          "The local signature is ad-hoc; this is not a notarized macOS distribution or an iOS app.\n")
+with zipfile.ZipFile(sys.argv[3], "w", compression=zipfile.ZIP_DEFLATED) as package:
+    package.write(binary, "muguet")
+    package.write("LICENSE", "LICENSE")
+    package.writestr("README.txt", readme)
+    package.writestr("SHA256SUMS", sums)
+PY
+fi
+
 GAME_ARGS=()
 ARTIFACT_NAME=Muguet-Launcher
 if [ "$GAME_SOURCE" != none ]; then

@@ -30,7 +30,8 @@ with open(os.environ["BUILD_COMMAND_LOG"], "a") as out:
         "heap": os.environ.get("MUGUET_IOS_HEAP_GB"),
         "build_id": os.environ.get("MUGUET_GAME_BUILD_ID"),
         "wasm_sha256": os.environ.get("MUGUET_GAME_WASM_SHA256"),
-        "game_code": os.environ.get("MUGUET_GAME_CODE")}) + "\n")
+        "game_code": os.environ.get("MUGUET_GAME_CODE"),
+        "sdkroot": os.environ.get("SDKROOT")}) + "\n")
 def value(flag, default=""):
     return args[args.index(flag) + 1] if flag in args else default
 if name == "uname":
@@ -44,6 +45,8 @@ elif name == "cargo":
             sys.exit("synthetic importer test failure")
     elif "build" in args:
         target = pathlib.Path(value("--target-dir", "target"))
+        if os.environ.get("BUILD_FAIL_HOST_COMPILER") == "1" and target.name == "ios-precompiler":
+            sys.exit("synthetic host compiler build failure")
         binary = target / (value("--target") + "/release/muguet" if "--target" in args else "release/muguet")
         binary.parent.mkdir(parents=True, exist_ok=True)
         binary.write_text(pathlib.Path(__file__).read_text())
@@ -82,11 +85,15 @@ elif name == "xcrun":
     if "--show-sdk-version" in args:
         print("27.2")
     elif "--show-sdk-path" in args:
-        print("/Applications/Xcode_27.2_beta_2.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS27.2.sdk")
+        if "macosx" in args:
+            print("/Applications/Xcode_27.2_beta_2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk")
+        else:
+            print("/Applications/Xcode_27.2_beta_2.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS27.2.sdk")
     elif "lipo" in args:
         print("arm64")
     elif "vtool" in args and "-show-build" in args:
-        print("Load command 0\n      cmd LC_BUILD_VERSION\n platform IOS\n    minos 15.0\n      sdk 27.2")
+        platform = "MACOS" if any("ios-precompiler" in arg for arg in args) else "IOS"
+        print(f"Load command 0\n      cmd LC_BUILD_VERSION\n platform {platform}\n    minos 15.0\n      sdk 27.2")
 elif name == "codesign":
     if "-d" in args or "--display" in args:
         print("Signature=adhoc\nTeamIdentifier=not set", file=sys.stderr)
@@ -117,6 +124,7 @@ class IOSBuildContract(unittest.TestCase):
         (self.root / "Cargo.lock").write_text("locked test fixture")
         (self.root / "scripts").mkdir()
         shutil.copy(ROOT / "scripts/validate_game_assets.py", self.root / "scripts/validate_game_assets.py")
+        shutil.copy(ROOT / "LICENSE", self.root / "LICENSE")
         if (ROOT / "scripts/build-ios-ci.sh").exists():
             shutil.copy(ROOT / "scripts/build-ios-ci.sh", self.root / "scripts/build-ios-ci.sh")
         shutil.copytree(ROOT / "tests/import-harness", self.root / "tests/import-harness",
@@ -370,6 +378,41 @@ class IOSBuildContract(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(any(c["command"] == "cargo" and "build" in c["args"] for c in self.commands()))
         self.assertIn("synthetic importer test failure", (self.root / "build/ios-ci/importer-tests.log").read_text())
+        self.assertIn("failed", (self.root / "build/ios-ci/status.txt").read_text())
+
+    def test_ci_builds_and_packages_host_aot_compiler_without_game(self):
+        developer = self.root / "Xcode/Contents/Developer"
+        developer.mkdir(parents=True)
+        result = self.run_build(ci=True, env={"DEVELOPER_DIR": str(developer), "RUNNER_TEMP": str(self.root),
+                                             "CARGO_BUILD_TARGET": "aarch64-apple-ios", "SDKROOT": "/ambient-ios-sdk"})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        commands = self.commands()
+        host = [c for c in commands if c["command"] == "cargo" and "build" in c["args"]
+                and "target/ios-precompiler" in c["args"]]
+        self.assertEqual(len(host), 1)
+        self.assertEqual(host[0]["args"][0], "+1.98.1")
+        self.assertIn("--locked", host[0]["args"])
+        self.assertNotIn("--no-default-features", host[0]["args"])
+        self.assertEqual(host[0]["args"][host[0]["args"].index("--target") + 1], "aarch64-apple-darwin")
+        self.assertIn("MacOSX.platform", host[0]["sdkroot"])
+        self.assertIsNone(host[0]["game_code"])
+        self.assertFalse(any(c["command"] == "muguet" for c in commands))
+        archive = self.root / "build/Muguet-AOT-compiler-macos-arm64.zip"
+        with zipfile.ZipFile(archive) as package:
+            self.assertEqual(set(package.namelist()), {"muguet", "LICENSE", "README.txt", "SHA256SUMS"})
+            self.assertIsNone(package.testzip())
+            digest = hashlib.sha256(package.read("muguet")).hexdigest()
+            self.assertIn(digest, package.read("SHA256SUMS").decode())
+            self.assertIn("No game code", package.read("README.txt").decode())
+
+    def test_ci_host_compiler_failure_retains_log_and_blocks_app_build(self):
+        developer = self.root / "Xcode/Contents/Developer"
+        developer.mkdir(parents=True)
+        result = self.run_build(ci=True, env={"DEVELOPER_DIR": str(developer), "RUNNER_TEMP": str(self.root),
+                                             "BUILD_FAIL_HOST_COMPILER": "1"})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(any(c["command"] == "xcodebuild" and "build" in c["args"] for c in self.commands()))
+        self.assertIn("synthetic host compiler build failure", (self.root / "build/ios-ci/host-compiler.log").read_text())
         self.assertIn("failed", (self.root / "build/ios-ci/status.txt").read_text())
 
     def test_device_exports_require_udid_before_installing_tools(self):
