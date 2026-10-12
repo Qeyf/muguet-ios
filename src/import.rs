@@ -1205,7 +1205,9 @@ mod tests {
     #[test]
     fn zip_folder_plan_enforces_the_embedded_build_id() {
         let temp = Temp::new();
-        let root = generic_zip_folder(&temp, fixture());
+        // Match import_directory's boundary normalization before calling its
+        // internal source builder (macOS temporary paths start under /var).
+        let root = generic_zip_folder(&temp, fixture()).canonicalize().unwrap();
         let mut paths: Vec<_> = std::fs::read_dir(&root).unwrap().map(|entry| entry.unwrap().path()).collect();
         paths.sort();
         let (mut source, entries) = zip_folder_source(root, paths).unwrap();
