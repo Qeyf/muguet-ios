@@ -238,17 +238,19 @@ struct LauncherView: View {
                 ProgressView(value: p)
                 Text("Importing… \(Int(p * 100)) %").font(.callout).monospacedDigit()
             } else {
-                Button(importer.ready ? "Choose another game ZIP…" : "Choose game ZIP…") { pickingFolder = false; picking = true }
+                Button("Choose game folder…") { pickingFolder = true; picking = true }
                     .controlSize(.large)
                     .buttonStyle(.borderedProminent)
-                Button("Choose game folder…") { pickingFolder = true; picking = true }
+                Button(importer.ready ? "Choose another game ZIP…" : "Choose game ZIP…") { pickingFolder = false; picking = true }
                     .buttonStyle(.bordered)
                 ForEach(importer.local, id: \.self) { url in
                     Button("Import \(url.lastPathComponent)") { importer.run(url) }
                 }
                 Text("If the picker doesn't work, move the zip to Files → On My iPhone → Muguet and it will show up here.")
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                Text("Select the export folder containing data/ and b/ with one build. Existing data is kept until the import succeeds; allow storage for both copies.")
+                Text("For ZIP parts, put every independent .zip in one folder and choose that folder once. Keep the original filenames; no manual extraction or combined ZIP is needed.")
+                    .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Text("An extracted folder containing data/ and b/ also works. Existing game data is kept until import succeeds; allow space for the new data as well as your ZIPs and previous game.")
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
             if let e = importer.error { Text(e).foregroundStyle(.red).font(.callout).multilineTextAlignment(.center) }

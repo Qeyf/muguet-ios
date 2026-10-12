@@ -26,9 +26,9 @@ It's basically the same source as the web port.
 
 Muguet itself will then asks for that zip
 
-The iOS launcher also lets you select a folder directly containing `data/` and `b/` in Files. It validates the manifest and shader references, copies into staging, and replaces the previous game only after a successful import. This prepares assets on the phone; executable game code must already be compiled and signed into the app. Ordinary PC GTA V files are not a verified input to this pipeline. See [GAME_ASSETS.md](docs/GAME_ASSETS.md) for lawful acquisition requirements, the exact layout and validation commands.
+Version 0.1.2/build 3 also lets you select a folder holding all independent ZIP parts once, or an extracted folder directly containing `data/` and `b/` in Files. It validates the manifest and shader references, copies into staging, and replaces the previous game only after a successful import. This prepares assets on the phone; executable game code must already be compiled and signed into the app. Ordinary PC GTA V files are not a verified input to this pipeline. See [GAME_ASSETS.md](docs/GAME_ASSETS.md) for lawful acquisition requirements, the exact layout and validation commands.
 
-The user reports reaching the launcher after the scene correction. The screenshot still shows missing embedded game code; selecting assets alone cannot enable Play. For the reported 14 separate ZIPs, [GAME_PARTS.md](docs/GAME_PARTS.md) records archive identification, expected folder selection, preparation and the next required matching-code build. Actual game input and gameplay remain unverified.
+The user reports reaching the launcher after the scene correction. The screenshot still shows missing embedded game code; selecting assets alone cannot enable Play. For the reported 14 separate ZIPs, [GAME_PARTS.md](docs/GAME_PARTS.md) records archive identification, expected folder selection, preparation and the next required matching-code build. The user’s actual WASM and two metadata files have been SHA-256 checked. Complete asset bytes and physical gameplay remain unverified; native game-code build status is tracked in the test report.
 
 ## Requirements
 - Apple Silicon Mac, macOS 14 or later

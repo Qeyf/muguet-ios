@@ -149,3 +149,7 @@ Installation and gameplay tests are in [TEST_REPORT.md](TEST_REPORT.md). Record 
 - https://developer.apple.com/documentation/os/os_proc_available_memory()
 - https://github.com/bytecodealliance/wasmtime/tree/v49.0.2
 - https://github.com/yonaskolb/XcodeGen/releases/tag/2.46.0
+
+## Private game-code build workspace
+
+The public workflow rejects commercial game-input modes before downloading or building. Use Qeyf/muguet-ios-game-build for private inputs and outputs. It checks out the exact public source SHA with full history and uses the existing make-ios.sh raw-WASM/AOT path, iOS SDK 27.2 and Rust 1.98.1. Inputs must pass archive CRC and exact SHA-256 checks before compilation. No certificate, P12, private key or signed transfer URL is committed. The manual private runner must remain within verified included quota; account budgets are not changed. LCSign re-signing and physical game tests remain separate from the ad-hoc package checks.

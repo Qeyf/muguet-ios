@@ -18,7 +18,7 @@ game.zip
         <hash>.consts.json  (where required)
 ```
 
-ZIPs can wrap this layout in one outer folder. The phone's folder picker expects the selected folder to contain `data/` and `b/` directly. Supply one complete build; mixing code, shader or data versions is unsupported. Keep source files out of the app's current `Documents/game` folder while importing.
+ZIPs can wrap this layout in one outer folder. For extracted inputs the folder picker expects `data/` and `b/` directly. Version 0.1.2 also accepts a folder of independent ZIPs with one shared game root inside their combined inventory. Supply one complete build; mixing code, shader or data versions is unsupported. Keep source files out of the app's current `Documents/game` folder while importing.
 
 `data/manifest.json` must be a JSON object with a nonempty `files` array. Each row contains `[relative_path, byte_length, ...]`. The order is meaningful: upstream I/O identifies files by row index. Every retained reference must exist with exactly that uncompressed byte length. The importer preserves order and normalizes paths. It intentionally excludes upstream `env_test` and `verityradio` content and updates manifest sizes when it changes the inherited DLC list. At least one mandatory retained asset is required.
 
@@ -28,7 +28,7 @@ For an iOS game build, `game.wasm` must be from the same build directory. Wasmti
 
 ## What the phone can prepare
 
-Select an authorized ZIP or a complete export folder in Files. The app holds security-scoped access and coordinates reads through `NSFileCoordinator`. The importer checks inventory and metadata before writing, streams files into a staging folder, reports progress, performs CRC/length checks, and only then replaces the old game. Failed imports remove staging and preserve the existing game where possible. A launcher without embedded code can import assets, but its Play control stays disabled.
+Select an authorized complete ZIP, extracted export folder, or folder containing every independent ZIP part in Files. The app holds security-scoped access and coordinates reads through `NSFileCoordinator`. The importer checks inventory and metadata before writing, streams files into a staging folder, reports progress, performs CRC/length checks, and only then replaces the old game. Failed imports remove staging and preserve the existing game where possible. A launcher without embedded code can import assets, but its Play control stays disabled.
 
 The phone does not merge unrelated retail GTA files, reconstruct missing shaders, convert a Windows executable into this WASM ABI, or compile/sign new native game code. The upstream supported path compiles WASM ahead of time on an Apple Silicon Mac. A generic on-device converter would change the architecture and would not establish either compatibility or executable-code permission.
 
@@ -42,7 +42,7 @@ To continue, supply an already lawful, complete browser export with provenance c
 
 ## Multiple independent archives
 
-The user reported 14 separate ZIPs. The actual files/source are still unidentified. [GAME_PARTS.md](GAME_PARTS.md) records the researched archive model, exact game-root selection, declared code/manifest paths, capacity arithmetic and the mandatory separation between asset import and embedded AOT code. No automatic byte-concatenation, new import library or arbitrary PC-file conversion was added.
+The folder-of-parts import is implemented in the production Rust importer. [GAME_PARTS.md](GAME_PARTS.md) gives the one-selection phone procedure, exact actual input hashes, missing-asset boundary and limits. The desktop Python validator still expects one complete ZIP or an extracted root. No byte concatenation, additional codec or retail-PC conversion was added.
 
 ## Offline validation
 

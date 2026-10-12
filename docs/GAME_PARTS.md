@@ -1,80 +1,56 @@
-# Preparing independent game ZIP archives
+# Import all independent ZIP parts with one folder selection
 
-Updated 2026-10-12. This is an input-preparation record, not a verified game export or a new game IPA. The user reported reaching the launcher on the target phone and supplied a screenshot. That image shows missing embedded game code and a disabled Play control; it does not identify the app version or establish game execution.
+Updated 2026-10-12. Version 0.1.2/build 3 adds folder-of-ZIPs preparation through the existing SwiftUI fileImporter, security-scoped access, NSFileCoordinator and pinned ZIP library. Native build and actual phone results are tracked separately in TEST_REPORT.md.
 
-## Inputs needed before changing import behavior
+## On the iPhone
 
-The actual 14 user ZIPs have not been supplied. Confirm their filenames and source first. Independent ZIP archives, byte-split ZIP volumes (`.z01`, `.zip.001`) and Windows retail/repack archives require different handling. Renaming a retail archive or concatenating independent ZIP bytes does not produce this project's supported input. The existing ZIP/folder importer should be retained until a real input demonstrates a missing supported case.
+1. Keep all fourteen independent ZIPs in one local Files folder, preferably under On My iPhone. Keep their original names. Finish downloading every file before selection.
+2. Do not extract them individually, concatenate their bytes, or put the ZIPs inside another ZIP. Keep an extracted `data/manifest.json` root in a separate folder.
+3. Install the matching game-code IPA through your own LCSign profile. A public launcher-only IPA can prepare data but cannot enable Play.
+4. Tap **Choose game folder…** and choose the folder holding all ZIPs once. Its ZIP members may use the producer's shared `mirror/playgta5.com/` wrapper; the importer identifies that single game root itself.
+5. Wait for import to finish. Every manifest asset and required loose shader/constants file must be present across the union. Failures preserve the previous game and show the actual error.
+6. When a game-code app and the matching complete assets are present, Play becomes available. Device initialization, rendering, audio and performance still need a real phone test.
 
-The researched `full-game-v1` candidate declares 14 independent `playgta5-part-01-of-14.zip` through `playgta5-part-14-of-14.zip` archives. Its README and downloaded JSON metadata were inspected; its commercial payload was not downloaded. The source expressly does not claim an asset redistribution license. It is not a recommended or rights-holder-verified download source. Technical instructions below apply only to an authorized export with this layout.
+A complete single game ZIP and an extracted folder directly holding `data/` and `b/` remain supported. This feature is not a PC-game converter. Split ZIP streams (`.z01`, `.zip.001`) require a different source and are rejected.
 
-## Expected preparation and selection
+## What is checked
 
-1. Compare every existing source archive against the appropriate trusted checksum inventory. Validate archive entries and CRC, retain relative paths, reject traversal, symlinks, duplicate/conflicting files and incomplete part sets. These checks cannot be marked passed without the actual archives.
-2. For independent archives from a single authorized export, extract their non-conflicting contents into one empty export location using a trusted archive utility. Preserve the directory hierarchy; do not replace a populated data folder with another partial folder. Do not compress the 14 ZIP files inside another ZIP.
-3. Select the actual game root in Muguet's existing **Choose game folder** picker. It must directly contain `data/` and `b/`. In the researched metadata, that root is `mirror/playgta5.com`, not the outer download directory or `runtime/`.
-4. Validate that complete root with the existing production-compatible validator before packaging/building. The phone will also stage, check and copy a complete input through its existing importer. It replaces the old game only after a successful import.
+The importer inventories every top-level independent `.zip` before staging. A `name-part-01-of-14.zip` set requires every declared part, one prefix and one total; missing/duplicate parts, mixed numbered sets and unrelated extra ZIPs are rejected. Generic archive names require a complete combined manifest/shader inventory.
 
-```text
-<selected-game-root>/
-  data/
-    manifest.json
-    <all retained referenced assets>
-  b/
-    <one-build-id>/
-      game.wasm
-      shaders/
-        index.json
-        <referenced loose .wgsl and .consts.json files>
-```
+The union must have one manifest and one matching build under `b/`. Validation rejects conflicting/case-colliding paths, traversal, symlinks, special files, foreign build roots, missing assets, incorrect byte lengths, missing WGSL/constants and invalid JSON. It enforces 256 ZIPs, 250,000 entries, 128 GiB aggregate uncompressed size, 32 GiB per file and 32 MiB per metadata file.
 
-Apple documents that tapping a ZIP in Files extracts it into a folder. This alone does not merge multiple folders or prove completeness. A single optional `game.zip` must contain `data/` and `b/` as the game layout; selecting the complete folder already avoids creating another large ZIP. The app uses documented SwiftUI fileImporter, security-scoped URLs and NSFileCoordinator. No new file-picker library or custom archive-concatenation algorithm is introduced.
+Files stream directly from the selected ZIPs into the existing import staging area. Only one ZIP reader is cached; no combined archive or full intermediate extracted source is created. Reopened members are bound to their inventoried path, size, type and CRC. Constants are read in archive order to avoid repeatedly parsing different ZIP directories. Existing manifest row order and the upstream intentional skips remain intact.
 
-## Measured metadata, not measured game payload
+A successful import replaces old data only after validation and complete reads. It is an inventory/integrity result, not proof of origin, copyright permission or successful gameplay.
 
-The two actual downloaded metadata JSON files passed SHA-256 checks against Release asset metadata. Their path list has unique safe relative names, consistent declared counts/totals and valid part references. All individual commercial-file hashes below remain publisher declarations, not measured local binaries or trusted producer signatures.
+## Actual supplied input identity
 
-| Declared item | Value |
-| --- | --- |
-| Mirror inventory | 12,482 files; 21,158,604,965 bytes |
-| Fourteen ZIPs together | 21,192,696,051 bytes |
-| Build directory | `8b0b5899ed` |
-| WASM | `mirror/playgta5.com/b/8b0b5899ed/game.wasm`; 63,201,802 bytes |
-| WASM declared SHA-256 | `11ca8d2c04c5e843d18ff4aea4899d72c86973c6b031df334e67c446b2ae83e0` |
-| Shader index | `mirror/playgta5.com/b/8b0b5899ed/shaders/index.json`; 685,955 bytes |
-| Asset manifest | `mirror/playgta5.com/data/manifest.json`; 393,014 bytes |
-| Part containing all three critical files | `playgta5-part-01-of-14.zip` |
-| Actual download-manifest.json SHA-256 | `83a2865640038e07352e554f7bebf78ce3fbdb49235714e5d69af06e7c4082ae` |
-| Actual file-inventory.json SHA-256 | `6def50e4232646763c1ad4c7e317a5afbd884b81c428e46f975ca7f58ee1d835` |
+The user supplied the following three files; their real bytes were measured. The complete fourteen ZIPs, loose shader files and commercial asset bytes have not been supplied to this workspace.
 
-No WASM ABI/name-section checks, archive CRC, actual shader references, user-file hashes, license grant or gameplay have passed yet. The folder/build names alone do not establish version compatibility. The 14 parts already on the user's phone must first be matched to the stated source; this document does not assume that match.
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `game.wasm` | 63,201,802 | `11ca8d2c04c5e843d18ff4aea4899d72c86973c6b031df334e67c446b2ae83e0` |
+| `data/manifest.json` | 393,014 | `c5d7b041dbcde22e54f97dc271a52690ea6101391bfda3fb9ecd13d8ef748c1a` |
+| `b/8b0b5899ed/shaders/index.json` | 685,955 | `11c331895051b30126980ef666bd8935314ab400348b17c56ef8fe8983f50ee0` |
 
-## Storage and validation
+These match the declared `8b0b5899ed` metadata snapshot. Matching hashes establish byte identity; no rights-holder distribution license was verified. No unauthorized game mirror payload was downloaded or published.
 
-Metadata-only arithmetic: retaining the ZIPs plus one full mirror uses approximately 42.35 GB (decimal). Retaining the ZIPs, extracted source and a second full copy during app import uses approximately 63.51 GB before filesystem overhead, any previous game and unrelated app/system data. This is a conservative mirror-copy estimate, not a measured importer total. The existing validator reports actual selected/import bytes and capacity needs once actual inputs are available. Do not delete original archives before verification and a recoverable backup.
+The actual manifest declares 5,814 assets / 20,944,285,552 bytes. Upstream intentionally skips 277 `env_test`/`verityradio` entries / 5,502,243,796 bytes, leaving 5,537 assets / 15,442,041,756 bytes (14.38 GiB), plus imported loose shaders and metadata. The actual shader index has 4,919 records: 4,808 marked successful, 111 marked failed and 1,786 constants tables required. Missing/failed rendering paths are not repaired by import.
 
-```bash
-python3 scripts/validate_game_assets.py /private/path/selected-game-root --require-code \
-  --expected-build-id <verified-build-id> \
-  --expected-wasm-sha256 <verified-source-wasm-hash> \
-  --report /private/path/game-validation.json
-```
+Allow free space for at least the new 15.44 GB of retained data, shader files and filesystem overhead, in addition to ZIPs and any previous game. The importer does not guarantee a free-space reservation; write failures roll back staging. Cloud providers may require extra local materialization. The earlier estimate involving both an extracted source copy and an import copy does not apply to this direct ZIP-folder path.
 
-Do not use the candidate publisher's declared hash as a proof of rights or a trusted origin. Use actual-file checks and an authorized producer/export source. A successful inventory is still not game-runtime validation. Windows `.cmd`, `.ps1` and the bundled Python executable are not iOS build inputs.
+## Code compilation and private builds
 
-## Game code and the next actual build
+On-device preparation does not add new executable game code. The existing upstream `--precompile-ios` path patches and precompiles the matching user-provided WASM, then make-ios.sh embeds it in the signed executable's `__GAME` section. The app must be built again for another game-code build.
 
-This launcher IPA has no embedded game code. Asset import cannot enable Play by itself. The existing upstream path precompiles the actual matching WASM on Apple Silicon and embeds/signs the compiled module into a new arm64 IPA. Import preparation can happen on the phone; the current architecture does not compile and sign new native executable code there.
+Public source history, license and launcher-only releases remain in Qeyf/muguet-ios. Real user game inputs and game-code build outputs belong only in the private Qeyf/muguet-ios-game-build orchestration workspace or local/private storage. Public Actions reject game-input modes before download/build. Raw-WASM compilation does not prove complete asset/shader availability.
 
-For an authorized complete export, use the documented ZIP build after full validation, or the upstream-supported raw-WASM build on a controlled Mac with independently verified matching assets. A raw WASM build does not verify the full data/shader archive. Game-code builds must be kept in private/local build storage; this public repository's launcher-only releases contain no commercial game code. Do not run a game-input job in a public Actions repository: its existing game artifact-upload path is not private distribution.
-
-Before actual game AOT, provide the download/source identity and an authorized export's real `game.wasm`, `data/manifest.json` and `shaders/index.json`. The researched WASM declaration is only about 63 MB, so the full 21 GB asset set need not be uploaded merely to examine the actual module. A private complete-input validator report and inventory are still needed to establish asset completeness. No game build is marked successful until host compilation, embedded module checks and real device initialization pass.
+The desktop `scripts/validate_game_assets.py` currently supports a complete ZIP or an extracted root. It does not accept a folder of independent ZIPs; the new phone path is validated by the production Rust importer. No fake complete game.zip is produced from the three supplied files.
 
 ## References
 
-- `src/import.rs`, `ios/Launcher.swift`, `make-ios.sh`, `build.rs`, `scripts/validate_game_assets.py`.
+- `src/import.rs`, `ios/Launcher.swift`, `src/main.rs`, `make-ios.sh`, `build.rs`.
 - https://developer.apple.com/documentation/swiftui/view/fileimporter(ispresented:allowedcontenttypes:allowsmultipleselection:oncompletion:)
 - https://developer.apple.com/documentation/foundation/nsurl/startaccessingsecurityscopedresource()
 - https://developer.apple.com/documentation/foundation/nsfilecoordinator
-- https://support.apple.com/en-us/102532
-- Candidate metadata/provenance audit: `alihammoud21/playgta5`, tag `full-game-v1`; not an authorized download recommendation.
+- https://github.com/c22dev/muguet
