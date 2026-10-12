@@ -54,3 +54,11 @@ No developer-installer-ready or playable GTA V result is claimed. The actual lau
 5. Export `debugging` or registered-device `release-testing` IPA, verify archive/export signatures, install, and fill the physical test table using measurements.
 
 No paid runner, certificate revocation, unrelated signing change, App Store upload or commercial asset redistribution is performed by these preparations.
+
+## 2026-10-12 continuation
+
+- Actual user-supplied game.wasm, manifest.json and index.json were measured and match the declared 8b0b5899ed snapshot. Full assets and loose shader bytes remain absent here.
+- Implemented direct independent-ZIP-folder import using the existing library, FFI and staging transaction; no intermediate combined ZIP or extracted source copy.
+- Candidate version 0.1.2/build 3: 48 production Rust tests and 66 portable Python checks passed; independent review completed and a measured cross-archive metadata performance issue fixed.
+- A private build orchestration repo Qeyf/muguet-ios-game-build was created. It preserves source history by cloning the full public fork history at the exact build SHA; it is not a source-history mirror.
+- Native candidate builds, exact input transfer, embedded game-code IPA checks and versioned delivery remain in progress. No actual candidate IPA or physical gameplay is marked successful until those gates pass.

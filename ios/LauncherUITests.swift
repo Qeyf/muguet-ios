@@ -26,6 +26,10 @@ final class LauncherUITests: XCTestCase {
         let title = app.staticTexts["Muguet"]
         XCTAssertTrue(title.waitForExistence(timeout: 20))
         XCTAssertTrue(title.isHittable, "The launcher title must be visible")
+        let chooseFolder = app.buttons["Choose game folder…"]
+        XCTAssertTrue(chooseFolder.waitForExistence(timeout: 20))
+        XCTAssertTrue(chooseFolder.isHittable, "The folder import button must be visible")
+        XCTAssertTrue(chooseFolder.isEnabled, "Folder preparation must work before game code is available")
         let chooseZIP = app.buttons["Choose game ZIP…"]
         XCTAssertTrue(chooseZIP.waitForExistence(timeout: 20))
         XCTAssertTrue(chooseZIP.isHittable, "The ZIP import button must be visible")

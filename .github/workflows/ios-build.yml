@@ -48,6 +48,16 @@ jobs:
       MUGUET_EXPORT_METHOD: ${{ inputs.export_method || 'debugging' }}
       BUNDLE_ID: ${{ vars.MUGUET_BUNDLE_ID || 'com.qeyf.muguet' }}
     steps:
+      - name: Keep game-code builds private
+        if: env.MUGUET_GAME_SOURCE != 'none'
+        env:
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [ "$REPOSITORY_PRIVATE" != true ]; then
+            printf 'Game-code builds and artifacts require a private repository.\n' >&2
+            exit 1
+          fi
+
       - name: Checkout source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

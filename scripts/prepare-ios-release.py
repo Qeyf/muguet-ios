@@ -46,12 +46,12 @@ def prepare(package, evidence, output):
         f"Native build and UI-test evidence: {run}\nSource: `{os.environ['GITHUB_SHA']}`\n\n"
         f"- iOS SDK: {facts['iphoneos_sdk']}; arm64 device compilation and strict self-signature checks passed.\n"
         f"- Simulator: {selection['device_type_name']}, iOS {selection['runtime_version']} ({selection.get('runtime_build')}).\n"
-        "- Native UI test: visible launcher, ZIP import button and disabled Play; background/reactivation passed.\n"
+        "- Native UI test: visible launcher, ZIP/folder import controls and disabled Play; background/reactivation passed.\n"
         "- Physical iPhone retest: pending. No physical-device success is inferred from simulator results.\n"
         "- Game code/assets: absent. The launcher and Mac compiler have not run GTA V.\n"
         "- IPA signature: ad-hoc self-signature; re-sign through LCSign with your own eligible profile.\n\n"
-        "This prerelease addresses the supplied UIKit no-scene-lifecycle startup assertion with a single UIWindowScene and the pinned winit contributor backport.\n"
-        "It is not a released upstream winit fix. See docs/IOS27_SCENE_FIX.md at this tag for the source audit.\n\n"
+        "The launcher accepts a complete game ZIP, an extracted export folder, or a folder of independent ZIP parts. Keep every part in one folder with its original filename and choose that folder once. The importer validates the combined inventory and stages files before replacing old data.\n"
+        "The prior single UIWindowScene and pinned winit contributor backport remain in place. See docs/GAME_PARTS.md and docs/IOS27_SCENE_FIX.md at this tag.\n\n"
         "Keep prior installed game data backed up before replacing an application. Re-sign this version, install it, and retest launch and background recovery on the actual iPhone.\n"
     )
     output.mkdir(parents=True)

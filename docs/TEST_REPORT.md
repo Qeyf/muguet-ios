@@ -135,3 +135,11 @@ Native Rust/Swift compilation and linking with the selected beta SDK are verifie
 ## User-reported launcher and 14-part follow-up
 
 On 2026-10-12, the user supplied a launcher screenshot. It confirms the visible no-embedded-game-code state for that reported run, not successful GTA V initialization. Screenshot SHA-256: `7348cd8b63d38498ce5e30eace6cd3af0139aafa0c56d493f996f12f7304f670`; 2868 × 1320 pixels. The image itself and personal device data are not committed. The reported 14 ZIPs are not present in this workspace. Candidate metadata was hash-checked and internally examined; actual archives/WASM/shader compatibility and license remain unverified. See GAME_PARTS.md.
+
+## 2026-10-12 ZIP-folder candidate verification
+
+Version 0.1.2/build 3 adds one-folder preparation of independent ZIP parts. Fresh local production-harness run passed 48 Rust tests, zero failed or ignored. Fresh portable suite passed all 66 Python tests with zero skips after restoring the same official Rust 1.98.1 toolchain. Two new root regressions first reproduced acceptance of a foreign wrapped build beside a direct game root and of extracted metadata beside ZIPs; both now reject before staging.
+
+Independent review found and fixed repeated cross-archive shader-constant preflight work. A valid 0.83 MB synthetic debug fixture with 1,800 constants improved from 98.943 s to 0.275 s preflight; all 3,603 output files matched the single-ZIP path byte for byte. These are Linux synthetic timings, not iPhone performance. No unresolved Critical/Important review finding remains. Native candidate compilation, simulator results and game-code package verification are pending actual CI results.
+
+The actual supplied WASM/manifest/shader index hashes are recorded in GAME_PARTS.md. Full commercial ZIP payloads, loose shaders and a physical game run remain unverified. Historical statements above about absent game inputs describe their earlier dated builds.
